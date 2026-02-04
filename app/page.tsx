@@ -8,36 +8,44 @@ import { motion, AnimatePresence } from "framer-motion";
 // --- Mock Data ---
 const PRODUCTS = [
   {
-    id: 1,
-    name: "Heavyweight Box Tee",
-    price: 35,
-    colors: ["#FFFFFF", "#171717", "#D4D4D8"],
-    image: "/prod-tee.png",
-    tag: "Essential"
-  },
-  {
-    id: 2,
-    name: "Everyday Hoodie",
-    price: 85,
-    colors: ["#171717", "#52525B", "#F4F4F5"],
-    image: "/prod-hoodie.png",
-    tag: "Best Seller"
-  },
-  {
-    id: 3,
-    name: "Pleated Trouser",
-    price: 95,
-    colors: ["#27272A", "#18181B"],
-    image: "/prod-tee.png", // Reusing for demo
-    tag: "New"
-  },
-  {
-    id: 4,
-    name: "Structure Coat",
-    price: 220,
+    id: 6,
+    name: "Ramadan Kareem Calligraphy",
+    price: 350,
     colors: ["#171717"],
-    image: "/prod-hoodie.png", // Reusing for demo
-    tag: "Limited"
+    image: "/model-ramadan-black.png",
+    tag: "Seasonal"
+  },
+  {
+    id: 8,
+    name: "Ramadan Crescent Tee",
+    price: 350,
+    colors: ["#991B1B"],
+    image: "/model-ramadan-red.png",
+    tag: "Seasonal"
+  },
+  {
+    id: 9,
+    name: "Family Roles Tee Set",
+    price: 1500,
+    colors: ["#0F766E"],
+    image: "/model-family-set.jpg",
+    tag: "Bundle"
+  },
+  {
+    id: 10,
+    name: "Happy Family Day Tee",
+    price: 350,
+    colors: ["#800000"],
+    image: "/model-family-maroon.jpg",
+    tag: "Bestseller"
+  },
+  {
+    id: 11,
+    name: "Together Forever Tee",
+    price: 350,
+    colors: ["#FFFFFF"],
+    image: "/model-together-white.jpg",
+    tag: "New"
   }
 ];
 
@@ -98,6 +106,7 @@ export default function Home() {
   const aboutRef = useRef<HTMLElement>(null);
   const journalRef = useRef<HTMLElement>(null);
   const storesRef = useRef<HTMLElement>(null);
+  const bestSellersRef = useRef<HTMLDivElement>(null);
 
   const scrollToSection = (ref: React.RefObject<HTMLElement | null>) => {
     if (ref.current) {
@@ -134,7 +143,7 @@ export default function Home() {
   };
 
   // Confirm Add to Cart
-  const confirmAddToCart = () => {
+  const confirmAddToCart = (goToCheckout = false) => {
     if (!selectedProduct) return;
 
     const uniqueKey = `${selectedProduct.id}-${selectionSize}`;
@@ -155,6 +164,9 @@ export default function Home() {
 
     setSelectedProduct(null);
     setIsCartOpen(true);
+    if (goToCheckout) {
+      setCheckoutStep(1); // Proceed to shipping/checkout immediately
+    }
   };
 
   // Cart Logic
@@ -223,9 +235,9 @@ export default function Home() {
           <div className="absolute inset-0 bg-gradient-to-t from-neutral-900/40 to-transparent" />
         </div>
         <div className="relative z-10 text-center text-white px-4">
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-4">Essentials Defined.</h1>
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-4">Values You Wear.</h1>
           <p className="text-lg md:text-xl font-light tracking-wide text-white/90 mb-8 max-w-lg mx-auto">
-            Elevated basics engineered for the modern wardrobe. No logos, just form.
+            Statement pieces designed to speak for you. Modern cuts, bold messages.
           </p>
           <button
             onClick={() => scrollToSection(shopRef)}
@@ -240,7 +252,7 @@ export default function Home() {
       <section ref={shopRef} id="shop" className="px-6 py-24 md:px-12 max-w-[1600px] mx-auto scroll-mt-20">
         <div className="flex justify-between items-end mb-12">
           <h2 className="text-3xl font-bold tracking-tight">New Arrivals.</h2>
-          <a href="#" className="text-xs font-semibold uppercase border-b border-black pb-1 hover:border-transparent transition-colors">View All</a>
+          <button onClick={() => scrollToSection(shopRef)} className="text-xs font-semibold uppercase border-b border-black pb-1 hover:border-transparent transition-colors">View All</button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-12">
@@ -262,14 +274,14 @@ export default function Home() {
                   <button
                     className="w-full bg-black text-white py-3 text-xs uppercase font-bold tracking-widest hover:bg-neutral-800"
                   >
-                    Add to Cart - ${product.price}
+                    Add to Cart - ₱{product.price}
                   </button>
                 </div>
               </div>
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="text-sm font-medium">{product.name}</h3>
-                  <p className="text-sm text-neutral-500 mt-1">${product.price}</p>
+                  <p className="text-sm text-neutral-500 mt-1">₱{product.price}</p>
                 </div>
                 <div className="flex gap-1 mt-1">
                   {product.colors.map(color => (
@@ -286,12 +298,22 @@ export default function Home() {
       <section className="py-20 bg-neutral-900 text-white overflow-hidden">
         <div className="px-6 md:px-12 mb-8 flex items-center justify-between">
           <h2 className="text-2xl font-bold tracking-tight">Best Sellers.</h2>
-          <div className="flex gap-2"> {/* Placeholders for arrow functionality */}
-            <ArrowRight className="h-6 w-6 rotate-180 opacity-50" />
-            <ArrowRight className="h-6 w-6 opacity-50" />
+          <div className="flex gap-2">
+            <button
+              onClick={() => bestSellersRef.current?.scrollBy({ left: -300, behavior: 'smooth' })}
+              className="p-2 border border-white/20 rounded-full hover:bg-white/10 transition-colors"
+            >
+              <ArrowRight className="h-6 w-6 rotate-180" />
+            </button>
+            <button
+              onClick={() => bestSellersRef.current?.scrollBy({ left: 300, behavior: 'smooth' })}
+              className="p-2 border border-white/20 rounded-full hover:bg-white/10 transition-colors"
+            >
+              <ArrowRight className="h-6 w-6" />
+            </button>
           </div>
         </div>
-        <div className="flex gap-6 overflow-x-auto px-6 md:px-12 pb-8 no-scrollbar snap-x">
+        <div ref={bestSellersRef} className="flex gap-6 overflow-x-auto px-6 md:px-12 pb-8 no-scrollbar snap-x scroll-smooth">
           {[...PRODUCTS, ...PRODUCTS].map((product, idx) => (
             <div key={`${product.id}-${idx}`} className="flex-none w-[280px] snap-center group cursor-pointer" onClick={() => openAddToCartModal(product)}>
               <div className="relative aspect-square bg-neutral-800 mb-3 overflow-hidden">
@@ -303,7 +325,7 @@ export default function Home() {
                 />
               </div>
               <h3 className="text-sm font-medium">{product.name}</h3>
-              <p className="text-sm text-neutral-400 mt-0.5">${product.price}</p>
+              <p className="text-sm text-neutral-400 mt-0.5">₱{product.price}</p>
             </div>
           ))}
         </div>
@@ -313,27 +335,30 @@ export default function Home() {
       <section ref={aboutRef} className="py-24 px-6 md:px-12 bg-neutral-50">
         <div className="max-w-4xl mx-auto flex flex-col md:flex-row gap-12 items-center">
           <div className="flex-1 space-y-6">
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tighter">Engineered for Silence.</h2>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tighter">Wear Your Story.</h2>
             <p className="text-neutral-500 text-lg leading-relaxed">
-              At KK Plain, we believe that style shouldn't scream. It should whisper.
-              Our collection is born from a desire to strip away the unnecessary, leaving only the essential.
-              No logos, no noise—just pure, architectural form and premium fabrics sourced from the finest mills in Japan.
+              At KK Plain, we believe fasion is more than just fabric—it's a statement.
+              Our new collection brings together modern aesthetics with meaningful designs.
+              Whether it's celebrating family, faith, or personal values, each piece is crafted to resonate with who you are.
             </p>
             <div className="flex gap-8 pt-4">
               <div>
-                <h4 className="font-bold text-2xl">04</h4>
+                <h4 className="font-bold text-2xl">05</h4>
                 <span className="text-xs uppercase text-neutral-400 font-bold tracking-widest">Collections</span>
               </div>
               <div>
-                <h4 className="font-bold text-2xl">12k+</h4>
+                <h4 className="font-bold text-2xl">15k+</h4>
                 <span className="text-xs uppercase text-neutral-400 font-bold tracking-widest">Happy Customers</span>
               </div>
             </div>
           </div>
-          <div className="flex-1 relative h-[400px] w-full bg-neutral-200">
-            <div className="absolute inset-0 bg-neutral-300 flex items-center justify-center text-neutral-400 text-xs font-bold uppercase tracking-widest">
-              Studio Image Placeholder
-            </div>
+          <div className="flex-1 relative h-[500px] w-full bg-neutral-100 rounded-lg overflow-hidden">
+            <Image
+              src="/model-together-white.jpg"
+              alt="Together Forever Collection"
+              fill
+              className="object-cover"
+            />
           </div>
         </div>
       </section>
@@ -346,10 +371,17 @@ export default function Home() {
             {[1, 2, 3].map(i => (
               <div key={i} className="group cursor-pointer">
                 <div className="relative aspect-[16/9] bg-neutral-100 mb-6 overflow-hidden">
-                  <div className="absolute inset-0 bg-neutral-200 group-hover:scale-105 transition-transform duration-500" />
+                  <Image
+                    src={i === 1 ? "/model-family-maroon.jpg" : i === 2 ? "/model-ramadan-black.png" : "/model-family-set.jpg"}
+                    alt="Journal"
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
                 </div>
                 <span className="text-xs font-bold text-neutral-400 uppercase tracking-widest">Editorials — Oct {24 + i}</span>
-                <h3 className="text-xl font-bold mt-2 mb-2 group-hover:underline decoration-1 underline-offset-4">Minimalism in the Modern Age</h3>
+                <h3 className="text-xl font-bold mt-2 mb-2 group-hover:underline decoration-1 underline-offset-4">
+                  {i === 1 ? "Celebrating Family" : i === 2 ? "Faith in Fashion" : "Unity in Style"}
+                </h3>
                 <p className="text-neutral-500 text-sm">Exploring how stripping back the noise creates space for what truly matters.</p>
               </div>
             ))}
@@ -363,16 +395,16 @@ export default function Home() {
           <h2 className="text-3xl font-bold mb-12">Visit Our Stores.</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
             <div className="space-y-4">
-              <h3 className="text-xl font-bold">Tokyo</h3>
-              <p className="text-neutral-400 text-sm">Shibuya City, 1-23-4<br />Tokyo, Japan</p>
+              <h3 className="text-xl font-bold">Manila</h3>
+              <p className="text-neutral-400 text-sm">SM Megamall, Bldg B<br />Mandaluyong City</p>
             </div>
             <div className="space-y-4">
-              <h3 className="text-xl font-bold">New York</h3>
-              <p className="text-neutral-400 text-sm">142 Grand St,<br />SoHo, NY 10013</p>
+              <h3 className="text-xl font-bold">Cebu</h3>
+              <p className="text-neutral-400 text-sm">Ayala Center Cebu<br />Cebu Business Park</p>
             </div>
             <div className="space-y-4">
-              <h3 className="text-xl font-bold">London</h3>
-              <p className="text-neutral-400 text-sm">42 Redchurch St,<br />Shoreditch, E2 7DP</p>
+              <h3 className="text-xl font-bold">Davao</h3>
+              <p className="text-neutral-400 text-sm">SM Lanang Premier<br />Davao City</p>
             </div>
           </div>
         </div>
@@ -491,7 +523,7 @@ export default function Home() {
 
                         <div className="flex justify-between items-center py-3 border-t border-neutral-50">
                           <span className="text-xs text-neutral-500">{order.items.length} items</span>
-                          <div className="text-sm font-bold">Order Total: ${order.total}</div>
+                          <div className="text-sm font-bold">Order Total: ₱{order.total}</div>
                         </div>
 
                         {/* Tracking Info - specifically for 'To Receive' or 'To Ship' */}
@@ -591,12 +623,20 @@ export default function Home() {
                 </div>
               </div>
 
-              <button
-                onClick={confirmAddToCart}
-                className="w-full bg-black text-white py-3.5 text-sm font-bold uppercase tracking-widest hover:bg-neutral-800 transition-colors"
-              >
-                Add to Cart - ${(selectedProduct.price * selectionQty).toFixed(2)}
-              </button>
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={() => confirmAddToCart(false)}
+                  className="flex-1 bg-white text-black border border-black py-3.5 text-sm font-bold uppercase tracking-widest hover:bg-neutral-50 transition-colors"
+                >
+                  Add to Cart
+                </button>
+                <button
+                  onClick={() => confirmAddToCart(true)}
+                  className="flex-1 bg-black text-white py-3.5 text-sm font-bold uppercase tracking-widest hover:bg-neutral-800 transition-colors"
+                >
+                  Buy Now
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
@@ -665,7 +705,7 @@ export default function Home() {
                                   <span className="text-xs font-medium w-4 text-center">{item.qty}</span>
                                   <button onClick={() => updateQty(item.uniqueKey, 1)} className="p-1 hover:bg-neutral-100 rounded"><Plus className="h-3 w-3" /></button>
                                 </div>
-                                <p className="text-sm font-bold">${product.price * item.qty}</p>
+                                <p className="text-sm font-bold">₱{product.price * item.qty}</p>
                               </div>
                             </div>
                           </div>
@@ -706,7 +746,7 @@ export default function Home() {
                     <span className="text-neutral-500">
                       {checkoutStep === 0 ? "Total (Selected)" : "Total"}
                     </span>
-                    <span className="font-bold text-lg">${cartTotal}</span>
+                    <span className="font-bold text-lg">₱{cartTotal}</span>
                   </div>
                   <button
                     onClick={() => {
