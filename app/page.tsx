@@ -68,6 +68,14 @@ type CartItem = {
   selected: boolean;
 };
 
+type ChatMessage = {
+  id: number;
+  text: string;
+  sender: string;
+  time: string;
+  isImage?: boolean;
+};
+
 // --- Mock Order History Data ---
 const ORDER_TABS = ["To Pay", "To Ship", "To Receive", "Completed", "Cancelled"];
 
@@ -147,7 +155,7 @@ export default function Home() {
   const [selectedPayment, setSelectedPayment] = useState("GCASH");
   const [isMessagingSeller, setIsMessagingSeller] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [chatMessages, setChatMessages] = useState([
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     { id: 1, text: "Hi! How can we help you today?", sender: "seller", time: "10:00 AM" }
   ]);
   const [chatInput, setChatInput] = useState("");
