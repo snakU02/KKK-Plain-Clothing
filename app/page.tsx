@@ -11,7 +11,7 @@ const PRODUCTS = [
     id: 6,
     name: "Ramadan Kareem Calligraphy",
     price: 350,
-    colors: ["#171717"],
+    colors: ["#171717", "#0F766E", "#1E3A8A", "#991B1B"],
     image: "/model-ramadan-black.png",
     tag: "Seasonal"
   },
@@ -19,7 +19,7 @@ const PRODUCTS = [
     id: 8,
     name: "Ramadan Crescent Tee",
     price: 350,
-    colors: ["#991B1B"],
+    colors: ["#991B1B", "#171717", "#1E3A8A", "#991B1B"],
     image: "/model-ramadan-red.png",
     tag: "Seasonal"
   },
@@ -27,7 +27,7 @@ const PRODUCTS = [
     id: 9,
     name: "Family Roles Tee Set",
     price: 1500,
-    colors: ["#0F766E"],
+    colors: ["#0F766E", "#171717", "#1E3A8A", "#991B1B"],
     image: "/model-family-set.jpg",
     tag: "Bundle"
   },
@@ -35,7 +35,7 @@ const PRODUCTS = [
     id: 10,
     name: "Happy Family Day Tee",
     price: 350,
-    colors: ["#800000"],
+    colors: ["#800000", "#171717", "#1E3A8A", "#991B1B"],
     image: "/model-family-maroon.jpg",
     tag: "Bestseller"
   },
@@ -43,7 +43,7 @@ const PRODUCTS = [
     id: 11,
     name: "Together Forever Tee",
     price: 350,
-    colors: ["#FFFFFF"],
+    colors: ["#FFFFFF", "#171717", "#1E3A8A", "#991B1B"],
     image: "/model-together-white.jpg",
     tag: "New"
   },
