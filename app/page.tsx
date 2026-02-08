@@ -46,6 +46,14 @@ const PRODUCTS = [
     colors: ["#FFFFFF"],
     image: "/model-together-white.jpg",
     tag: "New"
+  },
+  {
+    id: 12,
+    name: "Customize T-Shirt Design",
+    price: 450,
+    colors: ["#FFFFFF", "#171717", "#1E3A8A", "#991B1B", "#6B7280"], // White, Black, Navy, Red, Grey
+    image: "/customize-tshirt.jpg",
+    tag: "Customizable"
   }
 ];
 
