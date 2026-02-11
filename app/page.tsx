@@ -2,8 +2,11 @@
 
 import Image from "next/image";
 import { useState, useRef } from "react";
-import { ShoppingBag, X, Menu, ArrowRight, Check, Plus, Minus, CreditCard, Banknote, MapPin, Truck, Package, Clock, ClipboardList, Wallet, Box } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ShoppingBag, X, Menu, ArrowRight, Check, Plus, Minus, CreditCard, Banknote, MapPin, Truck, Package, Clock, ClipboardList, Wallet, Box, LogOut } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSession, signOut } from "next-auth/react";
+import Link from "next/link";
 
 // --- Mock Data ---
 const PRODUCTS = [
@@ -124,6 +127,8 @@ export default function Home() {
   const journalRef = useRef<HTMLElement>(null);
   const storesRef = useRef<HTMLElement>(null);
   const bestSellersRef = useRef<HTMLDivElement>(null);
+  const { data: session } = useSession();
+  const router = useRouter();
 
   const scrollToSection = (ref: React.RefObject<HTMLElement | null>) => {
     if (ref.current) {
@@ -173,6 +178,10 @@ export default function Home() {
 
   // Confirm Add to Cart
   const confirmAddToCart = (goToCheckout = false) => {
+    if (!session) {
+      router.push("/login");
+      return;
+    }
     if (!selectedProduct) return;
 
     const uniqueKey = `${selectedProduct.id}-${selectionSize}-${selectionColor}`;
@@ -337,13 +346,36 @@ export default function Home() {
           <button onClick={() => scrollToSection(journalRef)} className="hover:text-neutral-500 transition-colors">Journal</button>
           <button onClick={() => scrollToSection(storesRef)} className="hover:text-neutral-500 transition-colors">Stores</button>
           <button onClick={() => { setIsTrackOrderOpen(true); }} className="text-neutral-400 hover:text-black transition-colors flex items-center gap-1"><ClipboardList className="h-4 w-4" /> My Orders</button>
-        </div>
-        <button onClick={() => { setCheckoutStep(0); setIsCartOpen(true); }} className="relative group p-2">
-          <ShoppingBag className="h-5 w-5" />
-          {cartItems.length > 0 && (
-            <span className="absolute top-1 right-0 h-2 w-2 rounded-full bg-black ring-2 ring-white" />
+          {((session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SUPER_ADMIN") && (
+            <Link href="/admin" className="text-black font-bold flex items-center gap-1 group">
+              <span className="bg-black text-white px-2 py-0.5 rounded text-[10px] uppercase">Admin</span>
+            </Link>
           )}
-        </button>
+        </div>
+        <div className="flex items-center gap-4">
+          {session ? (
+            <div className="flex items-center gap-3">
+              <div className="hidden lg:block text-right">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">Welcome</p>
+                <p className="text-xs font-bold">{session.user?.name}</p>
+              </div>
+              <button onClick={() => signOut()} className="p-2 hover:text-red-500 transition-colors" title="Sign Out">
+                <LogOut className="h-5 w-5" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <Link href="/login" className="text-xs font-bold uppercase tracking-widest hover:text-neutral-500 transition-colors">Login</Link>
+              <Link href="/signup" className="hidden sm:block text-[10px] font-bold uppercase tracking-widest bg-black text-white px-4 py-2 rounded-full hover:bg-neutral-800 transition-colors">Join</Link>
+            </div>
+          )}
+          <button onClick={() => { setCheckoutStep(0); setIsCartOpen(true); }} className="relative group p-2">
+            <ShoppingBag className="h-5 w-5" />
+            {cartItems.length > 0 && (
+              <span className="absolute top-1 right-0 h-2 w-2 rounded-full bg-black ring-2 ring-white" />
+            )}
+          </button>
+        </div>
       </nav>
 
       {/* Hero Section */}
