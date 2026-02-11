@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ShoppingBag, X, Menu, ArrowRight, Check, Plus, Minus, CreditCard, Banknote, MapPin, Truck, Package, Clock, ClipboardList, Wallet, Box, LogOut } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -247,11 +247,45 @@ export default function Home() {
     return acc + (product ? product.price * item.qty : 0);
   }, 0);
 
+  const [checkoutInfo, setCheckoutInfo] = useState({
+    email: "",
+    firstName: "",
+    lastName: "",
+    address: ""
+  });
+
+  useEffect(() => {
+    if (session?.user) {
+      setCheckoutInfo({
+        email: session.user.email || "",
+        firstName: (session.user as any).firstName || session.user.name?.split(" ")[0] || "",
+        lastName: (session.user as any).lastName || session.user.name?.split(" ").slice(1).join(" ") || "",
+        address: (session.user as any).address || ""
+      });
+    }
+  }, [session]);
+
   // Filter orders for tabs
   const filteredOrders = orders.filter(order => order.status === activeTab);
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     const orderStatus = selectedPayment === "COD" ? "To Ship" : "To Pay";
+
+    // Save profile to database as default
+    try {
+      await fetch("/api/user/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: checkoutInfo.firstName,
+          lastName: checkoutInfo.lastName,
+          address: checkoutInfo.address
+        })
+      });
+    } catch (err) {
+      console.error("Failed to save profile:", err);
+    }
+
     const newOrder = {
       id: `ORD-${Math.floor(Math.random() * 9000) + 1000}`,
       status: orderStatus,
@@ -947,12 +981,36 @@ export default function Home() {
 
                     <div className="space-y-4">
                       <p className="text-xs uppercase font-bold text-neutral-400 tracking-widest">Shipping Details</p>
-                      <input type="email" placeholder="Email Address" className="w-full p-3 border border-neutral-200 rounded text-sm focus:outline-none focus:border-black" />
+                      <input
+                        type="email"
+                        placeholder="Email Address"
+                        value={checkoutInfo.email}
+                        disabled
+                        className="w-full p-3 border border-neutral-200 rounded text-sm bg-neutral-50 text-neutral-400 cursor-not-allowed"
+                      />
                       <div className="grid grid-cols-2 gap-4">
-                        <input type="text" placeholder="First Name" className="w-full p-3 border border-neutral-200 rounded text-sm focus:outline-none focus:border-black" />
-                        <input type="text" placeholder="Last Name" className="w-full p-3 border border-neutral-200 rounded text-sm focus:outline-none focus:border-black" />
+                        <input
+                          type="text"
+                          placeholder="First Name"
+                          value={checkoutInfo.firstName}
+                          onChange={(e) => setCheckoutInfo(prev => ({ ...prev, firstName: e.target.value }))}
+                          className="w-full p-3 border border-neutral-200 rounded text-sm focus:outline-none focus:border-black"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Last Name"
+                          value={checkoutInfo.lastName}
+                          onChange={(e) => setCheckoutInfo(prev => ({ ...prev, lastName: e.target.value }))}
+                          className="w-full p-3 border border-neutral-200 rounded text-sm focus:outline-none focus:border-black"
+                        />
                       </div>
-                      <input type="text" placeholder="Shipping Address" className="w-full p-3 border border-neutral-200 rounded text-sm focus:outline-none focus:border-black" />
+                      <input
+                        type="text"
+                        placeholder="Shipping Address"
+                        value={checkoutInfo.address}
+                        onChange={(e) => setCheckoutInfo(prev => ({ ...prev, address: e.target.value }))}
+                        className="w-full p-3 border border-neutral-200 rounded text-sm focus:outline-none focus:border-black"
+                      />
                     </div>
                   </div>
                 )}
