@@ -12,7 +12,7 @@ export async function GET(req: Request) {
 
         const { searchParams } = new URL(req.url);
         const userId = searchParams.get("userId");
-        const role = (session.user as any).role;
+        const role = session.user.role;
 
         let query = supabaseAdmin.from("messages").select("*");
 
@@ -30,16 +30,16 @@ export async function GET(req: Request) {
             }
         } else {
             // Regular user fetching their own chat
-            query = query.eq("chat_user_id", (session.user as any).id).order("created_at", { ascending: true });
+            query = query.eq("chat_user_id", session.user.id).order("created_at", { ascending: true });
         }
 
         const { data, error } = await query;
         if (error) throw error;
 
         return NextResponse.json(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Chat GET error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: (error as Error).message }, { status: 500 });
     }
 }
 
@@ -51,8 +51,8 @@ export async function POST(req: Request) {
         }
 
         const { content, isImage, chatUserId } = await req.json();
-        const senderId = (session.user as any).id;
-        const senderRole = (session.user as any).role || "USER";
+        const senderId = session.user.id;
+        const senderRole = session.user.role || "USER";
         const senderName = session.user.name || "Customer";
 
         const isUser = senderRole !== "ADMIN" && senderRole !== "SUPER_ADMIN";
@@ -108,11 +108,11 @@ export async function POST(req: Request) {
         }
 
         return NextResponse.json(messageData);
-    } catch (error: any) {
-        console.error("Chat POST Exception:", error);
+    } catch (error: unknown) {
+        const err = error as { message?: string; details?: string; hint?: string };
         return NextResponse.json({
-            error: error.message || "Unknown server error",
-            details: error.details || error.hint || ""
+            error: err.message || "Unknown server error",
+            details: err.details || err.hint || ""
         }, { status: 500 });
     }
 }

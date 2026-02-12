@@ -43,11 +43,11 @@ export default function AdminDashboard() {
     const { data: session } = useSession();
     const [activeTab, setActiveTab] = useState("orders");
     const [searchQuery, setSearchQuery] = useState("");
-    const [pendingAdmins, setPendingAdmins] = useState<any[]>([]);
+    const [pendingAdmins, setPendingAdmins] = useState<unknown[]>([]);
     const [loadingAdmins, setLoadingAdmins] = useState(false);
 
     // Real Chat States
-    const [allMessages, setAllMessages] = useState<any[]>([]);
+    const [allMessages, setAllMessages] = useState<unknown[]>([]);
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
     const [adminChatInput, setAdminChatInput] = useState("");
 
@@ -115,7 +115,7 @@ export default function AdminDashboard() {
 
     const selectedUser = conversations.find(c => c.userId === selectedUserId);
 
-    const isSuperAdmin = (session?.user as any)?.role === "SUPER_ADMIN";
+    const isSuperAdmin = (session?.user)?.role === "SUPER_ADMIN";
 
     const sidebarItems = [
         { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
