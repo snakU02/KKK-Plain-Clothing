@@ -39,15 +39,34 @@ const RECENT_CHATS = [
     { id: 3, name: "Bob Wilson", message: "Thanks for the quick delivery!", time: "4h ago", unread: false, avatar: "https://ui-avatars.com/api/?name=Bob+Wilson" },
 ];
 
+interface DBMessage {
+    id: string;
+    chat_user_id: string;
+    sender_id: string;
+    sender_name: string;
+    sender_role: string;
+    content: string;
+    is_image: boolean;
+    created_at: string;
+}
+
+interface PendingAdmin {
+    id: string;
+    name: string | null;
+    email: string | null;
+    role: string;
+    created_at: string;
+}
+
 export default function AdminDashboard() {
     const { data: session } = useSession();
     const [activeTab, setActiveTab] = useState("orders");
     const [searchQuery, setSearchQuery] = useState("");
-    const [pendingAdmins, setPendingAdmins] = useState<unknown[]>([]);
+    const [pendingAdmins, setPendingAdmins] = useState<PendingAdmin[]>([]);
     const [loadingAdmins, setLoadingAdmins] = useState(false);
 
     // Real Chat States
-    const [allMessages, setAllMessages] = useState<unknown[]>([]);
+    const [allMessages, setAllMessages] = useState<DBMessage[]>([]);
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
     const [adminChatInput, setAdminChatInput] = useState("");
 
@@ -93,8 +112,8 @@ export default function AdminDashboard() {
 
     // Derived: Group all messages by chat_user_id for the sidebar
     // We want the most recent message per user
-    const conversationsMap = new Map();
-    allMessages.forEach(msg => {
+    const conversationsMap = new Map<string, any>();
+    allMessages.forEach((msg: DBMessage) => {
         const uid = msg.chat_user_id;
         if (!conversationsMap.has(uid)) {
             conversationsMap.set(uid, {
