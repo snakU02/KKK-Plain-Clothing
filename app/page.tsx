@@ -161,6 +161,7 @@ export default function Home() {
   const [selectedPayment, setSelectedPayment] = useState("GCASH");
   const [isMessagingSeller, setIsMessagingSeller] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+
   const openChat = () => {
     if (!session) {
       router.push("/login");
@@ -168,6 +169,7 @@ export default function Home() {
     }
     setIsChatOpen(true);
   };
+
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
 
