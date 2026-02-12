@@ -7,7 +7,7 @@ export async function POST(req: Request) {
     try {
         const session = await getServerSession(authOptions);
 
-        if (!session || session.user.role !== "SUPER_ADMIN") {
+        if (!session || (session.user as any).role !== "SUPER_ADMIN") {
             return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
         }
 
@@ -38,17 +38,17 @@ export async function POST(req: Request) {
         }
 
         return NextResponse.json({ error: "Invalid action" }, { status: 400 });
-    } catch (error: unknown) {
+    } catch (error: any) {
         console.error("Authorization error:", error);
-        return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
     try {
         const session = await getServerSession(authOptions);
 
-        if (!session || session.user.role !== "SUPER_ADMIN") {
+        if (!session || (session.user as any).role !== "SUPER_ADMIN") {
             return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
         }
 
@@ -61,8 +61,8 @@ export async function GET() {
         if (error) throw error;
 
         return NextResponse.json({ pendingAdmins });
-    } catch (error: unknown) {
+    } catch (error: any) {
         console.error("Fetch pending error:", error);
-        return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

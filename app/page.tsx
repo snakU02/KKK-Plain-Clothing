@@ -180,7 +180,7 @@ export default function Home() {
           const res = await fetch("/api/chat");
           const data = await res.json();
           if (Array.isArray(data)) {
-            setChatMessages(data.map((m) => ({
+            setChatMessages(data.map((m: any) => ({
               id: m.id,
               text: m.content,
               sender: m.sender_role === 'ADMIN' || m.sender_role === 'SUPER_ADMIN' ? 'seller' : 'user',
@@ -291,9 +291,9 @@ export default function Home() {
     if (session?.user) {
       setCheckoutInfo({
         email: session.user.email || "",
-        firstName: session.user.firstName || session.user.name?.split(" ")[0] || "",
-        lastName: session.user.lastName || session.user.name?.split(" ").slice(1).join(" ") || "",
-        address: session.user.address || ""
+        firstName: (session.user as any).firstName || session.user.name?.split(" ")[0] || "",
+        lastName: (session.user as any).lastName || session.user.name?.split(" ").slice(1).join(" ") || "",
+        address: (session.user as any).address || ""
       });
     }
   }, [session]);
@@ -418,7 +418,7 @@ export default function Home() {
           <button onClick={() => scrollToSection(journalRef)} className="hover:text-neutral-500 transition-colors">Journal</button>
           <button onClick={() => scrollToSection(storesRef)} className="hover:text-neutral-500 transition-colors">Stores</button>
           <button onClick={() => { setIsTrackOrderOpen(true); }} className="text-neutral-400 hover:text-black transition-colors flex items-center gap-1"><ClipboardList className="h-4 w-4" /> My Orders</button>
-          {((session?.user)?.role === "ADMIN" || (session?.user)?.role === "SUPER_ADMIN") && (
+          {((session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SUPER_ADMIN") && (
             <Link href="/admin" className="text-black font-bold flex items-center gap-1 group">
               <span className="bg-black text-white px-2 py-0.5 rounded text-[10px] uppercase">Admin</span>
             </Link>
@@ -565,9 +565,9 @@ export default function Home() {
           <div className="flex-1 space-y-6">
             <h2 className="text-3xl md:text-4xl font-bold tracking-tighter">Wear Your Story.</h2>
             <p className="text-neutral-500 text-lg leading-relaxed">
-              At KK Plain, we believe fasion is more than just fabric&mdash;it&apos;s a statement.
+              At KK Plain, we believe fasion is more than just fabric—it's a statement.
               Our new collection brings together modern aesthetics with meaningful designs.
-              Whether it&apos;s celebrating family, faith, or personal values, each piece is crafted to resonate with who you are.
+              Whether it's celebrating family, faith, or personal values, each piece is crafted to resonate with who you are.
             </p>
             <div className="flex gap-8 pt-4">
               <div>
@@ -1109,7 +1109,7 @@ export default function Home() {
                       <Check className="h-8 w-8" />
                     </div>
                     <h3 className="text-2xl font-bold mb-2">Order Confirmed.</h3>
-                    <p className="text-neutral-500 text-sm max-w-[200px] mx-auto mb-6">Thank you for shopping with KK Plain. We&apos;ll email you the details.</p>
+                    <p className="text-neutral-500 text-sm max-w-[200px] mx-auto mb-6">Thank you for shopping with KK Plain. We'll email you the details.</p>
                     <button onClick={() => { setCheckoutStep(0); setCartItems(prev => prev.filter(item => !item.selected)); setIsCartOpen(false); }} className="text-xs font-bold underline">Close Window</button>
                   </div>
                 )}

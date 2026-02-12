@@ -12,7 +12,7 @@ export async function POST(req: Request) {
         }
 
         const { firstName, lastName, address } = await req.json();
-        const userId = session.user.id;
+        const userId = (session.user as any).id;
 
         const { error } = await supabaseAdmin
             .from("users")
@@ -26,8 +26,8 @@ export async function POST(req: Request) {
         if (error) throw error;
 
         return NextResponse.json({ message: "Profile updated successfully" });
-    } catch (error: unknown) {
+    } catch (error: any) {
         console.error("Profile update error:", error);
-        return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

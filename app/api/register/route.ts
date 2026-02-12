@@ -43,8 +43,8 @@ export async function POST(req: Request) {
         }
 
         return NextResponse.json({ user: { id: user.id, email: user.email, role: user.role } });
-    } catch (error: unknown) {
+    } catch (error: any) {
         console.error("Signup error:", error);
-        return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
