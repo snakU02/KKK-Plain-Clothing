@@ -7,6 +7,7 @@ import { ShoppingBag, X, Menu, ArrowRight, Check, Plus, Minus, CreditCard, Bankn
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
+import { Footer } from "./components/shared/Footer";
 
 // --- Mock Data ---
 const PRODUCTS = [
@@ -160,10 +161,40 @@ export default function Home() {
   const [selectedPayment, setSelectedPayment] = useState("GCASH");
   const [isMessagingSeller, setIsMessagingSeller] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    { id: 1, text: "Hi! How can we help you today?", sender: "seller", time: "10:00 AM" }
-  ]);
+  const openChat = () => {
+    if (!session) {
+      router.push("/login");
+      return;
+    }
+    setIsChatOpen(true);
+  };
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
+
+  useEffect(() => {
+    if (isChatOpen && session) {
+      const fetchMessages = async () => {
+        try {
+          const res = await fetch("/api/chat");
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setChatMessages(data.map((m: any) => ({
+              id: m.id,
+              text: m.content,
+              sender: m.sender_role === 'ADMIN' || m.sender_role === 'SUPER_ADMIN' ? 'seller' : 'user',
+              time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              isImage: m.is_image
+            })));
+          }
+        } catch (err) {
+          console.error("Failed to fetch messages:", err);
+        }
+      };
+      fetchMessages();
+      const interval = setInterval(fetchMessages, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [isChatOpen, session]);
   const [orders, setOrders] = useState(MOCK_ORDERS);
   const [toast, setToast] = useState<{ message: string; show: boolean }>({ message: "", show: false });
   const chatFileRef = useRef<HTMLInputElement>(null);
@@ -318,27 +349,32 @@ export default function Home() {
     showToast("Order placed successfully!");
   };
 
-  const handleSendMessage = (text = chatInput, isImage = false) => {
+  const handleSendMessage = async (text = chatInput, isImage = false) => {
     if (!text && !isImage) return;
+
+    const tempId = Date.now();
     const newMessage = {
-      id: Date.now(),
+      id: tempId,
       text: text,
       sender: "user",
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isImage
     };
+
     setChatMessages(prev => [...prev, newMessage]);
     setChatInput("");
 
-    // Mock Auto-reply
-    setTimeout(() => {
-      setChatMessages(prev => [...prev, {
-        id: Date.now() + 1,
-        text: "Thanks for your message! Our team will get back to you shortly.",
-        sender: "seller",
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }]);
-    }, 1500);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: text, isImage })
+      });
+      if (!res.ok) throw new Error("Failed to send message");
+    } catch (err) {
+      console.error("Error sending message:", err);
+      showToast("Failed to send message.");
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -755,7 +791,7 @@ export default function Home() {
                             </button>
                           )}
                           <button
-                            onClick={() => setIsChatOpen(true)}
+                            onClick={openChat}
                             className="px-4 py-2 border border-neutral-200 text-xs font-bold rounded hover:bg-neutral-50"
                           >
                             Contact Seller
@@ -866,9 +902,7 @@ export default function Home() {
                 </div>
 
                 <button
-                  onClick={() => {
-                    setIsChatOpen(true);
-                  }}
+                  onClick={openChat}
                   className="w-full py-2 text-xs font-bold uppercase tracking-widest text-neutral-400 hover:text-black flex items-center justify-center gap-2 transition-colors border-t border-neutral-100 mt-2 pt-4"
                 >
                   <ShoppingBag className="h-4 w-4" />
@@ -1112,11 +1146,12 @@ export default function Home() {
           </div>
         )}
       </AnimatePresence>
+      <Footer />
       <div className="fixed bottom-8 right-8 z-[100]">
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
-          onClick={() => setIsChatOpen(true)}
+          onClick={openChat}
           className="relative bg-black text-white p-4 rounded-full shadow-2xl flex items-center gap-3 group"
         >
           <ShoppingBag className="h-6 w-6" />

@@ -46,6 +46,75 @@ export default function AdminDashboard() {
     const [pendingAdmins, setPendingAdmins] = useState<any[]>([]);
     const [loadingAdmins, setLoadingAdmins] = useState(false);
 
+    // Real Chat States
+    const [allMessages, setAllMessages] = useState<any[]>([]);
+    const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+    const [adminChatInput, setAdminChatInput] = useState("");
+
+    const fetchAllMessages = async () => {
+        try {
+            const res = await fetch("/api/chat");
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                setAllMessages(data);
+            }
+        } catch (err) {
+            console.error("Failed to fetch messages:", err);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === "messages") {
+            fetchAllMessages();
+            const interval = setInterval(fetchAllMessages, 5000);
+            return () => clearInterval(interval);
+        }
+    }, [activeTab]);
+
+    const handleAdminSendMessage = async () => {
+        if (!adminChatInput || !selectedUserId) return;
+        try {
+            const res = await fetch("/api/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    content: adminChatInput,
+                    chatUserId: selectedUserId
+                })
+            });
+            if (res.ok) {
+                setAdminChatInput("");
+                fetchAllMessages();
+            }
+        } catch (err) {
+            console.error("Failed to send message:", err);
+        }
+    };
+
+    // Derived: Group all messages by chat_user_id for the sidebar
+    // We want the most recent message per user
+    const conversationsMap = new Map();
+    allMessages.forEach(msg => {
+        const uid = msg.chat_user_id;
+        if (!conversationsMap.has(uid)) {
+            conversationsMap.set(uid, {
+                userId: uid,
+                name: msg.sender_role === 'USER' ? msg.sender_name : 'User ' + uid.slice(0, 4),
+                message: msg.content,
+                time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                unread: msg.sender_role === 'USER', // Simple heuristic for unread
+                avatar: `https://ui-avatars.com/api/?name=${msg.sender_name || 'U'}`
+            });
+        }
+    });
+    const conversations = Array.from(conversationsMap.values());
+
+    const selectedChatMessages = allMessages
+        .filter(m => m.chat_user_id === selectedUserId)
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+    const selectedUser = conversations.find(c => c.userId === selectedUserId);
+
     const isSuperAdmin = (session?.user as any)?.role === "SUPER_ADMIN";
 
     const sidebarItems = [
@@ -288,10 +357,13 @@ export default function AdminDashboard() {
                                         <h3 className="text-lg font-bold">Conversations</h3>
                                     </div>
                                     <div className="flex-1 overflow-y-auto">
-                                        {RECENT_CHATS.map((chat) => (
+                                        {conversations.length === 0 ? (
+                                            <div className="p-8 text-center text-neutral-400 text-sm">No conversations yet.</div>
+                                        ) : conversations.map((chat) => (
                                             <div
-                                                key={chat.id}
-                                                className={`p-4 flex gap-4 cursor-pointer hover:bg-neutral-50 transition-colors border-l-4 ${chat.unread ? 'border-black bg-neutral-50/50' : 'border-transparent'}`}
+                                                key={chat.userId}
+                                                onClick={() => setSelectedUserId(chat.userId)}
+                                                className={`p-4 flex gap-4 cursor-pointer hover:bg-neutral-50 transition-colors border-l-4 ${selectedUserId === chat.userId ? 'border-black bg-neutral-50/50' : 'border-transparent'}`}
                                             >
                                                 <div className="relative h-12 w-12 flex-shrink-0">
                                                     <Image src={chat.avatar} alt={chat.name} fill className="rounded-full" />
@@ -313,47 +385,74 @@ export default function AdminDashboard() {
 
                                 {/* Chat Window */}
                                 <div className="flex-1 bg-white rounded-2xl shadow-sm border border-neutral-200 flex flex-col overflow-hidden">
-                                    <div className="p-6 border-b border-neutral-100 flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <div className="h-10 w-10 relative">
-                                                <Image src={RECENT_CHATS[0].avatar} alt="John Doe" fill className="rounded-full" />
-                                                <span className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border-2 border-white" />
+                                    {selectedUserId ? (
+                                        <>
+                                            <div className="p-6 border-b border-neutral-100 flex items-center justify-between">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="h-10 w-10 relative">
+                                                        <Image src={selectedUser?.avatar || ""} alt={selectedUser?.name || "User"} fill className="rounded-full" />
+                                                        <span className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border-2 border-white" />
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="text-sm font-bold">{selectedUser?.name}</h4>
+                                                        <p className="text-xs text-neutral-400 font-medium">Customer</p>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <h4 className="text-sm font-bold">John Doe</h4>
-                                                <p className="text-xs text-neutral-400 font-medium">Online</p>
+                                            <div className="flex-1 p-6 overflow-y-auto bg-neutral-50 space-y-4">
+                                                {selectedChatMessages.map((m) => {
+                                                    const isBuyer = m.sender_id === m.chat_user_id;
+                                                    return (
+                                                        <div key={m.id} className={`flex gap-3 ${!isBuyer ? 'flex-row-reverse' : ''}`}>
+                                                            {isBuyer && (
+                                                                <div className="h-8 w-8 relative flex-shrink-0">
+                                                                    <Image src={selectedUser?.avatar || ""} alt="Avatar" fill className="rounded-full" />
+                                                                </div>
+                                                            )}
+                                                            <div className={`${!isBuyer ? 'bg-black text-white rounded-tr-none' : 'bg-white text-neutral-700 rounded-tl-none'} p-4 rounded-2xl shadow-sm max-w-[80%]`}>
+                                                                {m.is_image ? (
+                                                                    <div className="relative aspect-square w-64 bg-neutral-100 rounded-lg overflow-hidden my-1">
+                                                                        <Image src={m.content} alt="chat-img" fill className="object-cover" />
+                                                                    </div>
+                                                                ) : (
+                                                                    <p className="text-sm">{m.content}</p>
+                                                                )}
+                                                                <p className={`text-[10px] ${!isBuyer ? 'text-white/50' : 'text-neutral-400'} mt-2 font-medium`}>
+                                                                    {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                </p>
+                                                            </div>
+                                                            {!isBuyer && (
+                                                                <div className="h-8 w-8 bg-neutral-800 rounded-full flex items-center justify-center font-bold text-white text-[10px] flex-shrink-0">AD</div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
+                                            <div className="p-6 border-t border-neutral-100">
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        value={adminChatInput}
+                                                        onChange={(e) => setAdminChatInput(e.target.value)}
+                                                        onKeyDown={(e) => e.key === 'Enter' && handleAdminSendMessage()}
+                                                        placeholder="Type your message..."
+                                                        className="w-full pl-6 pr-16 py-4 bg-neutral-100 border-transparent rounded-2xl text-sm focus:bg-white focus:ring-2 focus:ring-black outline-none transition-all"
+                                                    />
+                                                    <button
+                                                        onClick={handleAdminSendMessage}
+                                                        className="absolute right-3 top-1/2 -translate-y-1/2 bg-black text-white p-2 rounded-xl hover:bg-neutral-800 transition-all"
+                                                    >
+                                                        <ArrowUpRight className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="flex-1 flex flex-col items-center justify-center text-neutral-400 gap-4">
+                                            <MessageSquare className="h-12 w-12 opacity-20" />
+                                            <p className="text-sm font-medium">Select a conversation to start chatting</p>
                                         </div>
-                                    </div>
-                                    <div className="flex-1 p-6 overflow-y-auto bg-neutral-50 space-y-4">
-                                        <div className="flex gap-3">
-                                            <div className="h-8 w-8 relative flex-shrink-0">
-                                                <Image src={RECENT_CHATS[0].avatar} alt="Avatar" fill className="rounded-full" />
-                                            </div>
-                                            <div className="bg-white p-4 rounded-2xl rounded-tl-none shadow-sm max-w-md">
-                                                <p className="text-sm text-neutral-700">Hi, I'm interested in the Heavyweight Box Tee. Is the XXL size still in stock?</p>
-                                                <p className="text-[10px] text-neutral-400 mt-2 font-medium">10:45 AM</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-3 justify-end">
-                                            <div className="bg-black text-white p-4 rounded-2xl rounded-tr-none shadow-md max-w-md">
-                                                <p className="text-sm">Hi John! Yes, we still have a few XXL units left in Black and Teal. Would you like me to reserve one for you?</p>
-                                                <p className="text-[10px] text-white/50 mt-2 font-medium">10:48 AM</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="p-6 border-t border-neutral-100">
-                                        <div className="relative">
-                                            <input
-                                                type="text"
-                                                placeholder="Type your message..."
-                                                className="w-full pl-6 pr-16 py-4 bg-neutral-100 border-transparent rounded-2xl text-sm focus:bg-white focus:ring-2 focus:ring-black outline-none transition-all"
-                                            />
-                                            <button className="absolute right-3 top-1/2 -translate-y-1/2 bg-black text-white p-2 rounded-xl hover:bg-neutral-800 transition-all">
-                                                <ArrowUpRight className="h-4 w-4" />
-                                            </button>
-                                        </div>
-                                    </div>
+                                    )}
                                 </div>
                             </motion.div>
                         )}
