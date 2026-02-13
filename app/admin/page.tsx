@@ -17,12 +17,13 @@ import {
     Truck,
     ArrowUpRight,
     TrendingUp,
-    Circle
+    Circle,
+    Image as ImageIcon
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { ShieldAlert, Loader2 } from "lucide-react";
 
 // --- Mock Admin Data ---
@@ -71,26 +72,6 @@ export default function AdminDashboard() {
         }
     }, [activeTab]);
 
-    const handleAdminSendMessage = async () => {
-        if (!adminChatInput || !selectedUserId) return;
-        try {
-            const res = await fetch("/api/chat", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    content: adminChatInput,
-                    chatUserId: selectedUserId
-                })
-            });
-            if (res.ok) {
-                setAdminChatInput("");
-                fetchAllMessages();
-            }
-        } catch (err) {
-            console.error("Failed to send message:", err);
-        }
-    };
-
     // Derived: Group all messages by chat_user_id for the sidebar
     // We want the most recent message per user
     const conversationsMap = new Map();
@@ -114,6 +95,47 @@ export default function AdminDashboard() {
         .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
     const selectedUser = conversations.find(c => c.userId === selectedUserId);
+
+    const chatEndRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (chatEndRef.current) {
+            chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+        }
+    }, [selectedChatMessages, selectedUserId]);
+
+    const handleAdminSendMessage = async (text = adminChatInput, isImage = false) => {
+        if ((!text && !isImage) || !selectedUserId) return;
+        try {
+            const res = await fetch("/api/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    content: text,
+                    isImage,
+                    chatUserId: selectedUserId
+                })
+            });
+            if (res.ok) {
+                if (!isImage) setAdminChatInput("");
+                fetchAllMessages();
+            }
+        } catch (err) {
+            console.error("Failed to send message:", err);
+        }
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file && selectedUserId) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                handleAdminSendMessage(reader.result as string, true);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
     const isSuperAdmin = (session?.user as any)?.role === "SUPER_ADMIN";
 
@@ -427,23 +449,40 @@ export default function AdminDashboard() {
                                                         </div>
                                                     );
                                                 })}
+                                                <div ref={chatEndRef} />
                                             </div>
                                             <div className="p-6 border-t border-neutral-100">
-                                                <div className="relative">
+                                                <div className="relative flex items-center gap-3">
                                                     <input
-                                                        type="text"
-                                                        value={adminChatInput}
-                                                        onChange={(e) => setAdminChatInput(e.target.value)}
-                                                        onKeyDown={(e) => e.key === 'Enter' && handleAdminSendMessage()}
-                                                        placeholder="Type your message..."
-                                                        className="w-full pl-6 pr-16 py-4 bg-neutral-100 border-transparent rounded-2xl text-sm focus:bg-white focus:ring-2 focus:ring-black outline-none transition-all"
+                                                        type="file"
+                                                        accept="image/*"
+                                                        className="hidden"
+                                                        ref={fileInputRef}
+                                                        onChange={handleFileChange}
                                                     />
                                                     <button
-                                                        onClick={handleAdminSendMessage}
-                                                        className="absolute right-3 top-1/2 -translate-y-1/2 bg-black text-white p-2 rounded-xl hover:bg-neutral-800 transition-all"
+                                                        onClick={() => fileInputRef.current?.click()}
+                                                        className="p-3 bg-neutral-100 text-neutral-500 rounded-xl hover:bg-neutral-200 hover:text-black transition-all"
+                                                        title="Attach Image"
                                                     >
-                                                        <ArrowUpRight className="h-4 w-4" />
+                                                        <ImageIcon className="h-5 w-5" />
                                                     </button>
+                                                    <div className="relative flex-1">
+                                                        <input
+                                                            type="text"
+                                                            value={adminChatInput}
+                                                            onChange={(e) => setAdminChatInput(e.target.value)}
+                                                            onKeyDown={(e) => e.key === 'Enter' && handleAdminSendMessage()}
+                                                            placeholder="Type your message..."
+                                                            className="w-full pl-6 pr-16 py-4 bg-neutral-100 border-transparent rounded-2xl text-sm focus:bg-white focus:ring-2 focus:ring-black outline-none transition-all"
+                                                        />
+                                                        <button
+                                                            onClick={() => handleAdminSendMessage()}
+                                                            className="absolute right-3 top-1/2 -translate-y-1/2 bg-black text-white p-2 rounded-xl hover:bg-neutral-800 transition-all"
+                                                        >
+                                                            <ArrowUpRight className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </>

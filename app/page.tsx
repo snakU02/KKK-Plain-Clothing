@@ -200,6 +200,13 @@ export default function Home() {
   const [orders, setOrders] = useState(MOCK_ORDERS);
   const [toast, setToast] = useState<{ message: string; show: boolean }>({ message: "", show: false });
   const chatFileRef = useRef<HTMLInputElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [chatMessages, isChatOpen]);
 
   // Open "Add to Cart" Modal
   const openAddToCartModal = (product: typeof PRODUCTS[0]) => {
@@ -1208,6 +1215,7 @@ export default function Home() {
                     </div>
                   </div>
                 ))}
+                <div ref={chatEndRef} />
               </div>
 
               {/* Quick Replies */}
