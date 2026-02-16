@@ -10,56 +10,64 @@ import Link from "next/link";
 import { Footer } from "./components/shared/Footer";
 
 // --- Mock Data ---
-const PRODUCTS = [
+const MOCK_PRODUCTS = [
   {
     id: 6,
     name: "Ramadan Kareem Calligraphy",
     price: 350,
-    colors: ["#171717", "#0F766E", "#1E3A8A", "#991B1B", "#B45309"], // Black, Teal, Navy, Red, Amber
+    colors: ["#171717", "#0F766E", "#1E3A8A", "#991B1B", "#B45309"],
     image: "/model-ramadan-black.png",
-    tag: "Seasonal"
+    tag: "Seasonal",
+    stock: 50
   },
   {
     id: 8,
     name: "Ramadan Crescent Tee",
     price: 350,
-    colors: ["#991B1B", "#171717", "#1E3A8A", "#065F46", "#3730A3"], // Red, Black, Navy, Emerald, Indigo
+    colors: ["#991B1B", "#171717", "#1E3A8A", "#065F46", "#3730A3"],
     image: "/model-ramadan-red.png",
-    tag: "Seasonal"
+    tag: "Seasonal",
+    stock: 30
   },
   {
     id: 9,
     name: "Family Roles Tee Set",
     price: 1500,
-    colors: ["#0F766E", "#171717", "#1E3A8A", "#991B1B", "#D97706"], // Teal, Black, Navy, Red, Orange
+    colors: ["#0F766E", "#171717", "#1E3A8A", "#991B1B", "#D97706"],
     image: "/model-family-set.jpg",
-    tag: "Bundle"
+    tag: "Bundle",
+    stock: 20
   },
   {
     id: 10,
     name: "Happy Family Day Tee",
     price: 350,
-    colors: ["#800000", "#171717", "#1E3A8A", "#991B1B", "#4B5563"], // Maroon, Black, Navy, Red, Grey
+    colors: ["#800000", "#171717", "#1E3A8A", "#991B1B", "#4B5563"],
     image: "/model-family-maroon.jpg",
-    tag: "Bestseller"
+    tag: "Bestseller",
+    stock: 100
   },
   {
     id: 11,
     name: "Together Forever Tee",
     price: 350,
-    colors: ["#FFFFFF", "#171717", "#1E3A8A", "#991B1B", "#EC4899"], // White, Black, Navy, Red, Pink
+    colors: ["#FFFFFF", "#171717", "#1E3A8A", "#991B1B", "#EC4899"],
     image: "/model-together-white.jpg",
-    tag: "New"
+    tag: "New",
+    stock: 45
   },
   {
     id: 12,
     name: "Customize T-Shirt Design",
     price: 450,
-    colors: ["#FFFFFF", "#171717", "#1E3A8A", "#991B1B", "#10B981", "#8B5CF6"], // White, Black, Navy, Red, Green, Violet
+    colors: ["#FFFFFF", "#171717", "#1E3A8A", "#991B1B", "#10B981", "#8B5CF6"],
     image: "/customize-tshirt.jpg",
-    tag: "Customizable"
+    tag: "Customizable",
+    stock: 500
   }
 ];
+
+type Product = typeof MOCK_PRODUCTS[0];
 
 const SIZES = ["S", "M", "L", "XL", "XXL"];
 
@@ -146,12 +154,30 @@ export default function Home() {
 
   // State
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
   const [isTrackOrderOpen, setIsTrackOrderOpen] = useState(false);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await fetch("/api/products");
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          // Merge with mock products if data is empty, or just set data
+          setProducts(data.length > 0 ? data : MOCK_PRODUCTS);
+        }
+      } catch (err) {
+        console.error("Failed to fetch products:", err);
+      }
+    };
+    fetchProducts();
+  }, []);
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("To Receive");
 
   // Product Selection Modal State
-  const [selectedProduct, setSelectedProduct] = useState<typeof PRODUCTS[0] | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectionSize, setSelectionSize] = useState("M");
   const [selectionColor, setSelectionColor] = useState("");
   const [selectionQty, setSelectionQty] = useState(1);
@@ -209,7 +235,7 @@ export default function Home() {
   }, [chatMessages, isChatOpen]);
 
   // Open "Add to Cart" Modal
-  const openAddToCartModal = (product: typeof PRODUCTS[0]) => {
+  const openAddToCartModal = (product: Product) => {
     setSelectedProduct(product);
     setSelectionSize("M");
     setSelectionColor(product.colors[0]);
@@ -229,19 +255,30 @@ export default function Home() {
     setCartItems(prev => {
       const existing = prev.find(item => item.uniqueKey === uniqueKey);
 
+      const productInStore = products.find(p => p.id === selectedProduct.id);
+      const currentInCart = existing ? existing.qty : 0;
+      const canAdd = productInStore ? Math.max(0, (productInStore.stock || 0) - currentInCart) : 0;
+
+      const actualQtyToAdd = Math.min(selectionQty, canAdd);
+
+      if (actualQtyToAdd <= 0 && canAdd === 0) {
+        showToast("Maximum stock reached for this item!");
+        return prev;
+      }
+
       // If Buy Now, we usually want to focus only on this item
       const updatedPrev = goToCheckout ? prev.map(item => ({ ...item, selected: false })) : prev;
 
       if (existing) {
         // Update existing item and move to top
-        const updated = { ...existing, qty: existing.qty + selectionQty, selected: true };
+        const updated = { ...existing, qty: Math.min(existing.qty + actualQtyToAdd, productInStore?.stock || 999), selected: true };
         return [updated, ...updatedPrev.filter(item => item.uniqueKey !== uniqueKey)];
       }
       // Add new item to top
       return [{
         id: selectedProduct.id,
         uniqueKey,
-        qty: selectionQty,
+        qty: actualQtyToAdd,
         size: selectionSize,
         color: selectionColor,
         selected: true // Default to selected
@@ -271,7 +308,9 @@ export default function Home() {
   const updateQty = (uniqueKey: string, delta: number) => {
     setCartItems(prev => prev.map(item => {
       if (item.uniqueKey === uniqueKey) {
-        return { ...item, qty: Math.max(1, item.qty + delta) };
+        const product = products.find(p => p.id === item.id);
+        const maxStock = product?.stock || 99;
+        return { ...item, qty: Math.min(Math.max(1, item.qty + delta), maxStock) };
       }
       return item;
     }));
@@ -283,7 +322,7 @@ export default function Home() {
 
   const selectedItems = cartItems.filter(item => item.selected);
   const cartTotal = selectedItems.reduce((acc, item) => {
-    const product = PRODUCTS.find(p => p.id === item.id);
+    const product = products.find(p => p.id === item.id);
     return acc + (product ? product.price * item.qty : 0);
   }, 0);
 
@@ -332,7 +371,7 @@ export default function Home() {
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       total: cartTotal,
       items: selectedItems.map(item => {
-        const product = PRODUCTS.find(p => p.id === item.id);
+        const product = products.find(p => p.id === item.id);
         return {
           name: product?.name || "Product",
           variant: `${item.color} / ${item.size}`,
@@ -491,7 +530,7 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-12">
-          {PRODUCTS.map((product) => (
+          {products.map((product) => (
             <div key={product.id} className="group cursor-pointer" onClick={() => openAddToCartModal(product)}>
               <div className="relative aspect-[3/4] overflow-hidden bg-neutral-100 mb-4">
                 <span className="absolute top-3 left-3 bg-white/90 backdrop-blur px-2 py-1 text-[10px] uppercase font-bold tracking-wider z-10">
@@ -549,7 +588,7 @@ export default function Home() {
           </div>
         </div>
         <div ref={bestSellersRef} className="flex gap-6 overflow-x-auto px-6 md:px-12 pb-8 no-scrollbar snap-x scroll-smooth">
-          {[...PRODUCTS, ...PRODUCTS].map((product, idx) => (
+          {[...products, ...products].map((product, idx) => (
             <div key={`${product.id}-${idx}`} className="flex-none w-[280px] snap-center group cursor-pointer" onClick={() => openAddToCartModal(product)}>
               <div className="relative aspect-square bg-neutral-800 mb-3 overflow-hidden">
                 <Image
@@ -876,11 +915,32 @@ export default function Home() {
 
               {/* Qty Selector */}
               <div className="mb-6">
-                <div className="text-xs font-bold uppercase tracking-widest mb-2">Quantity</div>
+                <div className="flex justify-between items-center mb-2">
+                  <div className="text-xs font-bold uppercase tracking-widest">Quantity</div>
+                  <div className="text-[10px] font-bold text-neutral-400">{selectedProduct.stock ?? 0} left in stock</div>
+                </div>
                 <div className="flex items-center w-32 border border-neutral-200 rounded-sm">
                   <button onClick={() => setSelectionQty(Math.max(1, selectionQty - 1))} className="w-10 h-10 flex items-center justify-center hover:bg-neutral-50"><Minus className="h-3 w-3" /></button>
-                  <span className="flex-1 text-center font-medium text-sm">{selectionQty}</span>
-                  <button onClick={() => setSelectionQty(selectionQty + 1)} className="w-10 h-10 flex items-center justify-center hover:bg-neutral-50"><Plus className="h-3 w-3" /></button>
+                  <input
+                    type="number"
+                    min="1"
+                    max={selectedProduct.stock || 1}
+                    value={selectionQty}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      if (!isNaN(val)) {
+                        setSelectionQty(Math.min(Math.max(1, val), selectedProduct.stock || 1));
+                      }
+                    }}
+                    className="flex-1 w-full text-center font-medium text-sm bg-transparent border-none focus:ring-0 outline-none"
+                  />
+                  <button
+                    onClick={() => setSelectionQty(prev => Math.min(prev + 1, selectedProduct.stock || 1))}
+                    className={`w-10 h-10 flex items-center justify-center hover:bg-neutral-50 ${selectionQty >= (selectedProduct.stock || 1) ? 'opacity-20 cursor-not-allowed' : ''}`}
+                    disabled={selectionQty >= (selectedProduct.stock || 1)}
+                  >
+                    <Plus className="h-3 w-3" />
+                  </button>
                 </div>
               </div>
 
@@ -954,7 +1014,7 @@ export default function Home() {
                   ) : (
                     <div className="space-y-6">
                       {cartItems.map((item) => {
-                        const product = PRODUCTS.find(p => p.id === item.id);
+                        const product = products.find(p => p.id === item.id);
                         return product ? (
                           <div key={item.uniqueKey} className="flex gap-4 items-start animate-in slide-in-from-bottom-2 duration-300">
                             {/* Checkbox for Selection */}
@@ -985,11 +1045,42 @@ export default function Home() {
 
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3 border border-neutral-200 px-2 py-1 rounded-sm">
-                                  <button onClick={() => updateQty(item.uniqueKey, -1)} className="p-1 hover:bg-neutral-100 rounded"><Minus className="h-3 w-3" /></button>
-                                  <span className="text-xs font-medium w-4 text-center">{item.qty}</span>
-                                  <button onClick={() => updateQty(item.uniqueKey, 1)} className="p-1 hover:bg-neutral-100 rounded"><Plus className="h-3 w-3" /></button>
+                                  <button
+                                    onClick={() => updateQty(item.uniqueKey, -1)}
+                                    className="p-1 hover:bg-neutral-100 rounded"
+                                  >
+                                    <Minus className="h-3 w-3" />
+                                  </button>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max={product?.stock || 99}
+                                    value={item.qty}
+                                    onChange={(e) => {
+                                      const val = parseInt(e.target.value);
+                                      if (!isNaN(val)) {
+                                        const maxVal = product?.stock || 99;
+                                        const finalVal = Math.min(Math.max(1, val), maxVal);
+                                        const delta = finalVal - item.qty;
+                                        updateQty(item.uniqueKey, delta);
+                                      }
+                                    }}
+                                    className="text-xs font-medium w-6 text-center bg-transparent border-none focus:ring-0 outline-none"
+                                  />
+                                  <button
+                                    onClick={() => updateQty(item.uniqueKey, 1)}
+                                    className={`p-1 hover:bg-neutral-100 rounded ${(product?.stock && item.qty >= product.stock) ? 'opacity-20 cursor-not-allowed' : ''}`}
+                                    disabled={!!(product?.stock && item.qty >= product.stock)}
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                  </button>
                                 </div>
-                                <p className="text-sm font-bold">₱{product.price * item.qty}</p>
+                                <div className="text-right">
+                                  <p className="text-sm font-bold">₱{(product?.price || 0) * item.qty}</p>
+                                  {product?.stock !== undefined && (
+                                    <p className="text-[9px] text-neutral-400">Stock: {product.stock}</p>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -1005,7 +1096,7 @@ export default function Home() {
                       <p className="text-[10px] uppercase font-bold text-neutral-400 tracking-widest mb-3">Order Summary</p>
                       <div className="space-y-3">
                         {selectedItems.map(item => {
-                          const product = PRODUCTS.find(p => p.id === item.id);
+                          const product = products.find(p => p.id === item.id);
                           return (
                             <div key={item.uniqueKey} className="flex gap-3 items-center">
                               <div className="h-10 w-8 relative bg-white rounded border border-neutral-100 overflow-hidden">
@@ -1067,7 +1158,7 @@ export default function Home() {
                       </div>
                       <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
                         {selectedItems.map(item => {
-                          const product = PRODUCTS.find(p => p.id === item.id);
+                          const product = products.find(p => p.id === item.id);
                           return (
                             <div key={item.uniqueKey} className="h-12 w-10 flex-none relative bg-white rounded border border-neutral-100 overflow-hidden">
                               <Image src={product?.image || ""} alt="" fill className="object-cover" />
@@ -1142,7 +1233,7 @@ export default function Home() {
                     }}
                     className={`w-full bg-black text-white py-4 text-sm font-bold uppercase tracking-widest hover:bg-neutral-800 rounded shadow-lg transition-all ${checkoutStep === 0 && selectedItems.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    {checkoutStep === 0 ? `Checkout (${selectedItems.length})` : checkoutStep === 2 ? "Place Order" : "Continue"}
+                    {checkoutStep === 0 ? `Checkout (${selectedItems.length})` : checkoutStep === 1 ? "Proceed to Payment" : checkoutStep === 2 ? "Place Order" : "Continue"}
                   </button>
                   {checkoutStep > 0 && (
                     <button onClick={() => setCheckoutStep(prev => prev - 1)} className="w-full mt-3 text-xs text-neutral-500 underline hover:text-black">
