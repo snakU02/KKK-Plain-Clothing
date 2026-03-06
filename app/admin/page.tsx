@@ -27,12 +27,13 @@ import {
     Upload,
     AlertTriangle,
     Calendar,
-    Mail
+    Mail,
+    ShieldAlert,
+    Loader2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
-import { ShieldAlert, Loader2 } from "lucide-react";
 
 // --- Mock Admin Data ---
 const ADMIN_ORDERS = [
@@ -100,6 +101,10 @@ const INITIAL_PRODUCTS = [
     }
 ];
 
+type AdminProduct = typeof INITIAL_PRODUCTS[0];
+type AdminOrder = typeof ADMIN_ORDERS[0];
+type Customer = typeof MOCK_CUSTOMERS[0];
+
 // --- Mock Dashboard Data ---
 const SALES_DATA = [
     { name: "Calligraphy Tee", goal: 100, actual: 125, growth: 25.0, lastYear: 100 },
@@ -121,14 +126,15 @@ const MOCK_CUSTOMERS = [
 
 export default function AdminDashboard() {
     const { data: session } = useSession();
+    const isSuperAdmin = (session?.user as { role?: string })?.role === "SUPER_ADMIN";
     const [activeTab, setActiveTab] = useState("dashboard"); // Default to dashboard as requested
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
-    const [pendingAdmins, setPendingAdmins] = useState<any[]>([]);
+    const [pendingAdmins, setPendingAdmins] = useState<any[]>([]); // Using any for admin auth records
     const [loadingAdmins, setLoadingAdmins] = useState(false);
 
     // Products State
-    const [products, setProducts] = useState(INITIAL_PRODUCTS);
+    const [products, setProducts] = useState<AdminProduct[]>(INITIAL_PRODUCTS);
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -154,7 +160,7 @@ export default function AdminDashboard() {
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [productToDelete, setProductToDelete] = useState<number | null>(null);
 
-    const [editingProduct, setEditingProduct] = useState<any | null>(null);
+    const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
     const [productForm, setProductForm] = useState({
         name: "",
         price: "",
@@ -166,7 +172,7 @@ export default function AdminDashboard() {
     const [imagePreview, setImagePreview] = useState<string | null>(null);
 
     // Real Chat States
-    const [allMessages, setAllMessages] = useState<any[]>([]);
+    const [allMessages, setAllMessages] = useState<any[]>([]); // Using any for chat records from Supabase
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
     const [adminChatInput, setAdminChatInput] = useState("");
 
@@ -192,8 +198,8 @@ export default function AdminDashboard() {
 
     // Derived: Group all messages by chat_user_id for the sidebar
     // We want the most recent message per user
-    const conversationsMap = new Map();
-    allMessages.forEach(msg => {
+    const conversationsMap = new Map<string, any>();
+    allMessages.forEach((msg: any) => {
         const uid = msg.chat_user_id;
         if (!conversationsMap.has(uid)) {
             conversationsMap.set(uid, {

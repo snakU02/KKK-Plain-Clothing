@@ -33,7 +33,7 @@ export const Navbar = () => {
                     <Link href="/about" className="text-foreground/80 hover:text-black transition-colors">
                         About
                     </Link>
-                    {mounted && ((session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SUPER_ADMIN") && (
+                    {mounted && ((session?.user as { role?: string })?.role === "ADMIN" || (session?.user as { role?: string })?.role === "SUPER_ADMIN") && (
                         <Link href="/admin" className="text-primary hover:text-black transition-colors flex items-center gap-1">
                             <LayoutDashboard className="h-4 w-4" /> Admin
                         </Link>

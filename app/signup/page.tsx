@@ -35,8 +35,8 @@ export default function SignupPage() {
             }
 
             router.push("/login?registered=true");
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err) {
+            setError((err as Error).message);
         } finally {
             setLoading(false);
         }

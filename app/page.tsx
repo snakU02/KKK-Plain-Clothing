@@ -132,6 +132,8 @@ const MOCK_ORDERS = [
   }
 ];
 
+type Order = typeof MOCK_ORDERS[0];
+
 export default function Home() {
   // Navigation Refs
   const shopRef = useRef<HTMLElement>(null);
@@ -196,7 +198,7 @@ export default function Home() {
   const [isMessagingSeller, setIsMessagingSeller] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   
-  const [paymentOrder, setPaymentOrder] = useState<any | null>(null);
+  const [paymentOrder, setPaymentOrder] = useState<Order | null>(null);
   const [paymentAccount, setPaymentAccount] = useState("");
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentError, setPaymentError] = useState("");
@@ -236,7 +238,7 @@ export default function Home() {
       return () => clearInterval(interval);
     }
   }, [isChatOpen, session]);
-  const [orders, setOrders] = useState(MOCK_ORDERS);
+  const [orders, setOrders] = useState<Order[]>(MOCK_ORDERS);
   const [toast, setToast] = useState<{ message: string; show: boolean }>({ message: "", show: false });
   const chatFileRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -486,7 +488,7 @@ export default function Home() {
           <button onClick={() => scrollToSection(journalRef)} className="hover:text-neutral-500 transition-colors">Journal</button>
           <button onClick={() => scrollToSection(storesRef)} className="hover:text-neutral-500 transition-colors">Stores</button>
           <button onClick={() => { setIsTrackOrderOpen(true); }} className="text-neutral-400 hover:text-black transition-colors flex items-center gap-1"><ClipboardList className="h-4 w-4" /> My Orders</button>
-          {mounted && ((session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SUPER_ADMIN") && (
+          {mounted && ((session?.user as { role?: string })?.role === "ADMIN" || (session?.user as { role?: string })?.role === "SUPER_ADMIN") && (
             <Link href="/admin" className="text-black font-bold flex items-center gap-1 group">
               <span className="bg-black text-white px-2 py-0.5 rounded text-[10px] uppercase">Admin</span>
             </Link>
@@ -635,9 +637,9 @@ export default function Home() {
           <div className="flex-1 space-y-6">
             <h2 className="text-3xl md:text-4xl font-bold tracking-tighter">Wear Your Story.</h2>
             <p className="text-neutral-500 text-lg leading-relaxed">
-              At KK Plain, we believe fasion is more than just fabric—it's a statement.
+              At KK Plain, we believe fasion is more than just fabric&mdash;it&apos;s a statement.
               Our new collection brings together modern aesthetics with meaningful designs.
-              Whether it's celebrating family, faith, or personal values, each piece is crafted to resonate with who you are.
+              Whether it&apos;s celebrating family, faith, or personal values, each piece is crafted to resonate with who you are.
             </p>
             <div className="flex gap-8 pt-4">
               <div>
@@ -1244,7 +1246,7 @@ export default function Home() {
                       <Check className="h-8 w-8" />
                     </div>
                     <h3 className="text-2xl font-bold mb-2">Order Confirmed.</h3>
-                    <p className="text-neutral-500 text-sm max-w-[200px] mx-auto mb-6">Thank you for shopping with KK Plain. We'll email you the details.</p>
+                    <p className="text-neutral-500 text-sm max-w-[200px] mx-auto mb-6">Thank you for shopping with KK Plain. We&apos;ll email you the details.</p>
                     <button onClick={() => { setCheckoutStep(0); setCartItems(prev => prev.filter(item => !item.selected)); setIsCartOpen(false); }} className="text-xs font-bold underline">Close Window</button>
                   </div>
                 )}
