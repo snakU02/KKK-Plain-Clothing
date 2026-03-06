@@ -261,7 +261,6 @@ export default function AdminDashboard() {
         }
     };
 
-    const isSuperAdmin = (session?.user as any)?.role === "SUPER_ADMIN";
 
     const sidebarItems = [
         { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
