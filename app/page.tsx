@@ -96,6 +96,7 @@ const MOCK_ORDERS = [
     id: "ORD-9281",
     status: "To Receive",
     date: "Oct 24, 2026",
+    paymentMethod: "GCASH",
     total: 120,
     items: [
       { name: "Heavyweight Box Tee", variant: "White / L", qty: 2, image: "/prod-tee.png" },
@@ -111,6 +112,7 @@ const MOCK_ORDERS = [
     id: "ORD-9280",
     status: "Completed",
     date: "Sep 12, 2026",
+    paymentMethod: "COD",
     total: 85,
     items: [
       { name: "Everyday Hoodie", variant: "Grey / M", qty: 1, image: "/prod-hoodie.png" }
@@ -121,6 +123,7 @@ const MOCK_ORDERS = [
     id: "ORD-9282",
     status: "To Ship",
     date: "Oct 25, 2026",
+    paymentMethod: "MAYA",
     total: 35,
     items: [
       { name: "Heavyweight Box Tee", variant: "Black / XL", qty: 1, image: "/prod-tee.png" }
@@ -156,6 +159,11 @@ export default function Home() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
   const [isTrackOrderOpen, setIsTrackOrderOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -187,6 +195,11 @@ export default function Home() {
   const [selectedPayment, setSelectedPayment] = useState("GCASH");
   const [isMessagingSeller, setIsMessagingSeller] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  
+  const [paymentOrder, setPaymentOrder] = useState<any | null>(null);
+  const [paymentAccount, setPaymentAccount] = useState("");
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentError, setPaymentError] = useState("");
 
   const openChat = () => {
     if (!session) {
@@ -210,7 +223,7 @@ export default function Home() {
               id: m.id,
               text: m.content,
               sender: m.sender_role === 'ADMIN' || m.sender_role === 'SUPER_ADMIN' ? 'seller' : 'user',
-              time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              time: new Date(m.created_at).toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' }),
               isImage: m.is_image
             })));
           }
@@ -369,6 +382,7 @@ export default function Home() {
       id: `ORD-${Math.floor(Math.random() * 9000) + 1000}`,
       status: orderStatus,
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      paymentMethod: selectedPayment,
       total: cartTotal,
       items: selectedItems.map(item => {
         const product = products.find(p => p.id === item.id);
@@ -394,7 +408,15 @@ export default function Home() {
     setCheckoutStep(0);
     setActiveTab(orderStatus);
 
-    showToast("Order placed successfully!");
+    if (selectedPayment !== "COD") {
+      setPaymentOrder(newOrder);
+      setPaymentAccount("");
+      setPaymentAmount("");
+      setPaymentError("");
+      setIsTrackOrderOpen(true);
+    } else {
+      showToast("Order placed successfully!");
+    }
   };
 
   const handleSendMessage = async (text = chatInput, isImage = false) => {
@@ -405,7 +427,7 @@ export default function Home() {
       id: tempId,
       text: text,
       sender: "user",
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      time: new Date().toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' }),
       isImage
     };
 
@@ -464,14 +486,14 @@ export default function Home() {
           <button onClick={() => scrollToSection(journalRef)} className="hover:text-neutral-500 transition-colors">Journal</button>
           <button onClick={() => scrollToSection(storesRef)} className="hover:text-neutral-500 transition-colors">Stores</button>
           <button onClick={() => { setIsTrackOrderOpen(true); }} className="text-neutral-400 hover:text-black transition-colors flex items-center gap-1"><ClipboardList className="h-4 w-4" /> My Orders</button>
-          {((session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SUPER_ADMIN") && (
+          {mounted && ((session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SUPER_ADMIN") && (
             <Link href="/admin" className="text-black font-bold flex items-center gap-1 group">
               <span className="bg-black text-white px-2 py-0.5 rounded text-[10px] uppercase">Admin</span>
             </Link>
           )}
         </div>
         <div className="flex items-center gap-4">
-          {session ? (
+          {mounted && session ? (
             <div className="flex items-center gap-3">
               <div className="hidden lg:block text-right">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">Welcome</p>
@@ -481,11 +503,13 @@ export default function Home() {
                 <LogOut className="h-5 w-5" />
               </button>
             </div>
-          ) : (
+          ) : mounted ? (
             <div className="flex items-center gap-3">
               <Link href="/login" className="text-xs font-bold uppercase tracking-widest hover:text-neutral-500 transition-colors">Login</Link>
               <Link href="/signup" className="hidden sm:block text-[10px] font-bold uppercase tracking-widest bg-black text-white px-4 py-2 rounded-full hover:bg-neutral-800 transition-colors">Join</Link>
             </div>
+          ) : (
+            <div className="flex items-center gap-3 w-[100px]" /> /* Placeholder to maintain layout */
           )}
           <button onClick={() => { setCheckoutStep(0); setIsCartOpen(true); }} className="relative group p-2">
             <ShoppingBag className="h-5 w-5" />
@@ -822,6 +846,19 @@ export default function Home() {
                         )}
 
                         <div className="mt-4 flex gap-2 justify-end">
+                          {order.status === 'To Pay' && (
+                            <button
+                              onClick={() => {
+                                setPaymentOrder(order);
+                                setPaymentAccount("");
+                                setPaymentAmount("");
+                                setPaymentError("");
+                              }}
+                              className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700"
+                            >
+                              Pay Now
+                            </button>
+                          )}
                           {(order.status === 'To Pay' || order.status === 'To Ship') && (
                             <button
                               onClick={() => handleOrderAction(order.id, 'cancel')}
@@ -1246,6 +1283,100 @@ export default function Home() {
           </div>
         )}
       </AnimatePresence>
+      
+      {/* PAYMENT MODAL */}
+      <AnimatePresence>
+        {paymentOrder && (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              onClick={() => setPaymentOrder(null)}
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="relative bg-white w-full max-w-sm rounded-xl shadow-2xl overflow-hidden flex flex-col p-6"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-bold text-lg uppercase tracking-widest">
+                  {paymentOrder.paymentMethod === 'CARD' ? 'Debit Card Payment' : `Pay via ${paymentOrder.paymentMethod}`}
+                </h3>
+                <button onClick={() => setPaymentOrder(null)} className="p-1 hover:bg-neutral-100 rounded-full"><X className="h-5 w-5" /></button>
+              </div>
+
+              <div className="mb-6 p-4 bg-neutral-50 rounded-lg text-center border border-neutral-100">
+                <p className="text-xs text-neutral-500 uppercase font-bold tracking-widest mb-1">Total Due</p>
+                <p className="text-2xl font-bold">₱{paymentOrder.total}</p>
+                <p className="text-[10px] text-neutral-400 mt-1">Order ID: {paymentOrder.id}</p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-2">
+                    {paymentOrder.paymentMethod === 'CARD' ? 'Card Number' : 'Account Number / Mobile'}
+                  </label>
+                  <input
+                    type="text"
+                    value={paymentAccount}
+                    onChange={(e) => setPaymentAccount(e.target.value)}
+                    placeholder={paymentOrder.paymentMethod === 'CARD' ? 'XXXX-XXXX-XXXX-XXXX' : '09XX-XXX-XXXX'}
+                    className="w-full p-3 border border-neutral-200 bg-neutral-50 rounded text-sm focus:bg-white focus:outline-none focus:border-black transition-colors"
+                  />
+                  {paymentOrder.paymentMethod === 'CARD' && (
+                    <div className="flex gap-4 mt-3">
+                      <input type="text" placeholder="MM/YY" className="w-full p-3 border border-neutral-200 bg-neutral-50 rounded text-sm focus:bg-white focus:outline-none focus:border-black transition-colors" />
+                      <input type="text" placeholder="CVV" className="w-full p-3 border border-neutral-200 bg-neutral-50 rounded text-sm focus:bg-white focus:outline-none focus:border-black transition-colors" />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest mb-2">Amount to Pay</label>
+                  <input
+                    type="number"
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    placeholder={`Enter exact amount (₱${paymentOrder.total})`}
+                    className="w-full p-3 border border-neutral-200 bg-neutral-50 rounded text-sm focus:bg-white focus:outline-none focus:border-black transition-colors"
+                  />
+                </div>
+                {paymentError && (
+                  <p className="text-xs text-red-500 font-bold bg-red-50 p-2 rounded">{paymentError}</p>
+                )}
+              </div>
+
+              <div className="mt-8 flex gap-3">
+                <button
+                  onClick={() => setPaymentOrder(null)}
+                  className="flex-1 py-3 text-xs font-bold uppercase tracking-widest border border-neutral-200 rounded hover:bg-neutral-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (!paymentAccount) {
+                      setPaymentError("Please enter your account details.");
+                      return;
+                    }
+                    if (parseFloat(paymentAmount) !== paymentOrder.total) {
+                      setPaymentError(`Please pay the exact amount of ₱${paymentOrder.total}.`);
+                      return;
+                    }
+                    // Success
+                    setOrders(prev => prev.map(o => o.id === paymentOrder.id ? { ...o, status: "To Ship", tracking: [{ status: "Payment Verified", time: "Just Now", active: true }, ...(o.tracking || [])] } : o));
+                    setPaymentOrder(null);
+                    setActiveTab("To Ship");
+                    showToast("Payment Successful!");
+                  }}
+                  className="flex-1 py-3 bg-black text-white text-xs font-bold uppercase tracking-widest rounded hover:bg-neutral-800 shadow-xl transition-colors"
+                >
+                  Pay Now
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <Footer />
       <div className="fixed bottom-8 right-8 z-[100]">
         <motion.button

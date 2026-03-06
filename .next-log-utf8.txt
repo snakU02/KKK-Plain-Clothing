@@ -1,0 +1,13 @@
+﻿
+> kk-plain-clothing@0.1.0 dev
+> next dev
+
+Γû▓ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.100.205:3000
+- Environments: .env
+
+Γ£ô Starting...
+Γ£ô Ready in 14.8s
+Γùï Compiling / ...
+ GET / 200 in 12.6s (compile: 8.6s, render: 4.0s)

@@ -47,7 +47,7 @@ export const Footer = () => {
                             </Link>
                         </div>
                         <div className="pt-4">
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-muted-foreground" suppressHydrationWarning>
                                 &copy; {new Date().getFullYear()} KK Plain Clothing. All rights reserved.
                             </p>
                         </div>

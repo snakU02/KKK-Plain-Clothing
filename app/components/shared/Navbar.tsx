@@ -9,6 +9,11 @@ import { ShoppingCart, Menu, Search, User, LogOut, LayoutDashboard } from "lucid
 export const Navbar = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const { data: session, status } = useSession();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     return (
         <nav className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md">
@@ -28,7 +33,7 @@ export const Navbar = () => {
                     <Link href="/about" className="text-foreground/80 hover:text-black transition-colors">
                         About
                     </Link>
-                    {((session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SUPER_ADMIN") && (
+                    {mounted && ((session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SUPER_ADMIN") && (
                         <Link href="/admin" className="text-primary hover:text-black transition-colors flex items-center gap-1">
                             <LayoutDashboard className="h-4 w-4" /> Admin
                         </Link>
@@ -47,7 +52,7 @@ export const Navbar = () => {
                         <span className="sr-only">Cart</span>
                     </Link>
 
-                    {status === "authenticated" ? (
+                    {mounted && status === "authenticated" ? (
                         <div className="flex items-center gap-2 border-l pl-4 ml-2">
                             <span className="text-xs font-bold hidden lg:block uppercase tracking-widest text-neutral-400">
                                 {session.user?.name}
@@ -60,7 +65,7 @@ export const Navbar = () => {
                                 <LogOut className="h-5 w-5" />
                             </button>
                         </div>
-                    ) : (
+                    ) : mounted ? (
                         <div className="flex items-center gap-4 border-l pl-4 ml-2">
                             <Link href="/login" className="text-xs font-bold uppercase tracking-widest hover:text-neutral-500 transition-colors">
                                 Login
@@ -69,6 +74,8 @@ export const Navbar = () => {
                                 Join
                             </Link>
                         </div>
+                    ) : (
+                        <div className="flex items-center gap-4 border-l pl-4 ml-2 w-[120px]" />
                     )}
 
                     {/* Mobile Menu Toggle */}

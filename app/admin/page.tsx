@@ -102,13 +102,12 @@ const INITIAL_PRODUCTS = [
 
 // --- Mock Dashboard Data ---
 const SALES_DATA = [
-    { name: "Box Tee", goal: 100, actual: 111, growth: 19.0, lastYear: 120 },
-    { name: "Hoodie", goal: 67, actual: 60, growth: 11.7, lastYear: 80 },
-    { name: "Ramadan", goal: 102, actual: 102, growth: 0.0, lastYear: 110 },
-    { name: "Family", goal: 28, actual: 39, growth: -6.7, lastYear: 24 },
-    { name: "Custom", goal: 32, actual: 28, growth: 14.3, lastYear: 29 },
-    { name: "Standard", goal: 18, actual: 16, growth: -10.0, lastYear: 20 },
-    { name: "Cap", goal: 28, actual: 27, growth: 7.7, lastYear: 30 }
+    { name: "Calligraphy Tee", goal: 100, actual: 125, growth: 25.0, lastYear: 100 },
+    { name: "Crescent Tee", goal: 80, actual: 75, growth: -6.2, lastYear: 80 },
+    { name: "Family Set", goal: 50, actual: 60, growth: 20.0, lastYear: 50 },
+    { name: "Family Day Tee", goal: 150, actual: 180, growth: 20.0, lastYear: 150 },
+    { name: "Together Tee", goal: 120, actual: 110, growth: -8.3, lastYear: 120 },
+    { name: "Custom Tee", goal: 200, actual: 230, growth: 15.0, lastYear: 200 }
 ];
 
 const MOCK_CUSTOMERS = [
@@ -116,19 +115,25 @@ const MOCK_CUSTOMERS = [
     { id: 2, name: "Robert Fox", email: "robert.f@example.com", totalOrders: 5, totalSpent: 1750, status: "Active", lastOrder: "2024-03-10" },
     { id: 3, name: "Cody Fisher", email: "cody.f@example.com", totalOrders: 2, totalSpent: 700, status: "Inactive", lastOrder: "2023-12-20" },
     { id: 4, name: "Esther Howard", email: "esther.h@example.com", totalOrders: 8, totalSpent: 2800, status: "Active", lastOrder: "2024-02-28" },
-    { id: 5, name: "Guy Hawkins", email: "guy.h@example.com", totalOrders: 1, totalSpent: 350, status: "New", lastOrder: "2024-03-18" },
-    { id: 6, name: "Jenny Wilson", email: "jenny.w@example.com", totalOrders: 15, totalSpent: 5250, status: "VIP", lastOrder: "2024-03-19" },
+    { id: 5, name: "Guy Hawkins", email: "guy.h@example.com", totalOrders: 1, totalSpent: 350, status: "Inactive", lastOrder: "2024-03-18" },
+    { id: 6, name: "Jenny Wilson", email: "jenny.w@example.com", totalOrders: 15, totalSpent: 5250, status: "Active", lastOrder: "2024-03-19" },
 ];
 
 export default function AdminDashboard() {
     const { data: session } = useSession();
     const [activeTab, setActiveTab] = useState("dashboard"); // Default to dashboard as requested
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [pendingAdmins, setPendingAdmins] = useState<any[]>([]);
     const [loadingAdmins, setLoadingAdmins] = useState(false);
 
     // Products State
     const [products, setProducts] = useState(INITIAL_PRODUCTS);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const fetchProducts = async () => {
         try {
@@ -195,7 +200,7 @@ export default function AdminDashboard() {
                 userId: uid,
                 name: msg.sender_role === 'USER' ? msg.sender_name : 'User ' + uid.slice(0, 4),
                 message: msg.content,
-                time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                time: new Date(msg.created_at).toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' }),
                 unread: msg.sender_role === 'USER', // Simple heuristic for unread
                 avatar: `https://ui-avatars.com/api/?name=${msg.sender_name || 'U'}`
             });
@@ -437,19 +442,55 @@ export default function AdminDashboard() {
                         />
                     </div>
                     <div className="flex items-center gap-6">
-                        <button className="relative p-2 text-neutral-500 hover:text-black">
-                            <Bell className="h-5 w-5" />
-                            <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border-2 border-white" />
-                        </button>
+                        <div className="relative z-50">
+                            <button onClick={() => setIsNotificationsOpen(!isNotificationsOpen)} className="relative p-2 text-neutral-500 hover:text-black">
+                                <Bell className="h-5 w-5" />
+                                <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border-2 border-white" />
+                            </button>
+                            <AnimatePresence>
+                                {isNotificationsOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-neutral-100 overflow-hidden z-50 text-left"
+                                    >
+                                        <div className="p-4 border-b border-neutral-100 flex justify-between items-center">
+                                            <h3 className="font-bold">Notifications</h3>
+                                            <span className="text-[10px] text-blue-500 font-bold uppercase cursor-pointer hover:underline">Mark all as read</span>
+                                        </div>
+                                        <div className="max-h-80 overflow-y-auto">
+                                            {[
+                                                { id: 1, title: "New Order", text: "Order ORD-9284 received", time: "5 min ago", unread: true },
+                                                { id: 2, title: "Low Stock", text: "Customize T-Shirt Design is running low", time: "1 hour ago", unread: true },
+                                                { id: 3, title: "Payment", text: "Payment confirmed for ORD-9283", time: "2 hours ago", unread: false },
+                                                { id: 4, title: "Message", text: "New message from Alice Johnston", time: "5 hours ago", unread: false }
+                                            ].map((notif) => (
+                                                <div key={notif.id} className={`p-4 border-b border-neutral-50 hover:bg-neutral-50 cursor-pointer transition-colors ${notif.unread ? "bg-blue-50/10" : ""}`}>
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <span className="text-sm font-bold text-black">{notif.title}</span>
+                                                        <span className="text-[10px] text-neutral-400 font-medium">{notif.time}</span>
+                                                    </div>
+                                                    <p className="text-xs text-neutral-500">{notif.text}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="p-3 text-center border-t border-neutral-100 bg-neutral-50">
+                                            <span className="text-[10px] font-bold text-neutral-500 hover:text-black cursor-pointer uppercase tracking-widest transition-colors">View All Notifications</span>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
                         <div className="flex items-center gap-3 border-l border-neutral-200 pl-6 cursor-pointer group">
                             <div className="text-right">
-                                <p className="text-sm font-bold">{session?.user?.name || "Admin Seller"}</p>
+                                <p className="text-sm font-bold">{mounted && session?.user?.name ? session.user.name : "Admin Seller"}</p>
                                 <p className="text-xs text-neutral-400 font-medium tracking-wide uppercase">
-                                    {isSuperAdmin ? "Super Admin" : "Store Admin"}
+                                    {mounted && isSuperAdmin ? "Super Admin" : "Store Admin"}
                                 </p>
                             </div>
                             <div className="h-10 w-10 bg-black rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-neutral-100 group-hover:ring-neutral-200 transition-all uppercase">
-                                {session?.user?.name ? session.user.name.split(' ').map(n => n[0]).join('') : "AS"}
+                                {mounted && session?.user?.name ? session.user.name.split(' ').map(n => n[0]).join('') : "AS"}
                             </div>
                         </div>
                     </div>
@@ -570,23 +611,50 @@ export default function AdminDashboard() {
 
                                         {/* SVG Line Overlay */}
                                         <svg className="absolute inset-0 h-full w-full pointer-events-none z-20 overflow-visible px-8">
-                                            <polyline
-                                                fill="none"
-                                                stroke="#3B82F6"
-                                                strokeWidth="2"
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                points={SALES_DATA.map((item, i) => {
-                                                    const max = Math.max(...SALES_DATA.map(d => Math.max(d.goal, d.actual))) * 1.2;
-                                                    const x = (i / (SALES_DATA.length - 1)) * 100;
-                                                    // Note: We need to align points with the center of the columns. 
-                                                    // In a real flex gap layout, exact percentage is tricky without exact widths.
-                                                    // We'll trust the flex alignment roughly for this mockup.
-                                                    // Better approach: just use points spread evenly.
-                                                    return `${(i * (100 / (SALES_DATA.length - 1)))}% ${100 - (item.actual / max) * 100}%`;
-                                                }).join(" ")}
-                                                className="drop-shadow-sm opacity-50"
-                                            />
+                                            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible pointer-events-none">
+                                                <defs>
+                                                    <linearGradient id="gradient" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="0%" stopColor="#3B82F6" stopOpacity="1" />
+                                                        <stop offset="100%" stopColor="#3B82F6" stopOpacity="0" />
+                                                    </linearGradient>
+                                                </defs>
+                                                {/* Area under curve (Gradient) */}
+                                                <path
+                                                    fill="url(#gradient)"
+                                                    d={`M 0 ${100 - (SALES_DATA[0].actual / (Math.max(...SALES_DATA.map(d => Math.max(d.goal, d.actual))) * 1.2)) * 100} ` + 
+                                                        SALES_DATA.slice(1).map((item, i) => {
+                                                            const max = Math.max(...SALES_DATA.map(d => Math.max(d.goal, d.actual))) * 1.2;
+                                                            const pX = (i * (100 / (SALES_DATA.length - 1)));
+                                                            const pY = 100 - (SALES_DATA[i].actual / max) * 100;
+                                                            const cX = ((i + 1) * (100 / (SALES_DATA.length - 1)));
+                                                            const cY = 100 - (item.actual / max) * 100;
+                                                            const cp1X = pX + (cX - pX) / 2;
+                                                            return `C ${cp1X} ${pY}, ${cp1X} ${cY}, ${cX} ${cY}`;
+                                                        }).join(" ") + ` L 100 100 L 0 100 Z`
+                                                    }
+                                                    className="opacity-20"
+                                                />
+                                                <path
+                                                    fill="none"
+                                                    stroke="#3B82F6"
+                                                    strokeWidth="3"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    d={`M 0 ${100 - (SALES_DATA[0].actual / (Math.max(...SALES_DATA.map(d => Math.max(d.goal, d.actual))) * 1.2)) * 100} ` + 
+                                                        SALES_DATA.slice(1).map((item, i) => {
+                                                            const max = Math.max(...SALES_DATA.map(d => Math.max(d.goal, d.actual))) * 1.2;
+                                                            const pX = (i * (100 / (SALES_DATA.length - 1)));
+                                                            const pY = 100 - (SALES_DATA[i].actual / max) * 100;
+                                                            const cX = ((i + 1) * (100 / (SALES_DATA.length - 1)));
+                                                            const cY = 100 - (item.actual / max) * 100;
+                                                            const cp1X = pX + (cX - pX) / 2;
+                                                            return `C ${cp1X} ${pY}, ${cp1X} ${cY}, ${cX} ${cY}`;
+                                                        }).join(" ")
+                                                    }
+                                                    className="drop-shadow-[0_4px_4px_rgba(59,130,246,0.3)]"
+                                                    style={{ vectorEffect: "non-scaling-stroke", overflow: "visible" }}
+                                                />
+                                            </svg>
                                             {/* Dots */}
                                             {SALES_DATA.map((item, i) => {
                                                 const max = Math.max(...SALES_DATA.map(d => Math.max(d.goal, d.actual))) * 1.2;
@@ -595,10 +663,11 @@ export default function AdminDashboard() {
                                                         key={i}
                                                         cx={`${(i * (100 / (SALES_DATA.length - 1)))}%`}
                                                         cy={`${100 - (item.actual / max) * 100}%`}
-                                                        r="3"
-                                                        fill="#3B82F6"
-                                                        stroke="white"
+                                                        r="4"
+                                                        fill="white"
+                                                        stroke="#3B82F6"
                                                         strokeWidth="2"
+                                                        className="drop-shadow-sm"
                                                     />
                                                 )
                                             })}
@@ -854,7 +923,7 @@ export default function AdminDashboard() {
                                                                     <p className="text-sm">{m.content}</p>
                                                                 )}
                                                                 <p className={`text-[10px] ${!isBuyer ? 'text-white/50' : 'text-neutral-400'} mt-2 font-medium`}>
-                                                                    {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                    {new Date(m.created_at).toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' })}
                                                                 </p>
                                                             </div>
                                                             {!isBuyer && (
@@ -963,12 +1032,9 @@ export default function AdminDashboard() {
                                                     </td>
                                                     <td className="px-6 py-4 text-sm text-neutral-500">{customer.email}</td>
                                                     <td className="px-6 py-4 text-sm font-bold">{customer.totalOrders}</td>
-                                                    <td className="px-6 py-4 text-sm font-bold">₱{customer.totalSpent.toLocaleString()}</td>
+                                                    <td className="px-6 py-4 text-sm font-bold">₱{customer.totalSpent.toLocaleString("en-US")}</td>
                                                     <td className="px-6 py-4">
-                                                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${customer.status === 'Active' ? 'bg-green-100 text-green-700' :
-                                                            customer.status === 'VIP' ? 'bg-purple-100 text-purple-700' :
-                                                                'bg-neutral-100 text-neutral-500'
-                                                            }`}>
+                                                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${customer.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-neutral-100 text-neutral-500'}`}>
                                                             {customer.status}
                                                         </span>
                                                     </td>
@@ -1030,7 +1096,7 @@ export default function AdminDashboard() {
                                                     <tr key={admin.id} className="hover:bg-neutral-50 transition-colors">
                                                         <td className="px-8 py-4 text-sm font-bold text-black">{admin.name}</td>
                                                         <td className="px-8 py-4 text-sm text-neutral-500">{admin.email}</td>
-                                                        <td className="px-8 py-4 text-sm text-neutral-400">{new Date(admin.created_at).toLocaleDateString()}</td>
+                                                        <td className="px-8 py-4 text-sm text-neutral-400">{new Date(admin.created_at).toLocaleDateString("en-US")}</td>
                                                         <td className="px-8 py-4">
                                                             <div className="flex items-center justify-center gap-3">
                                                                 <button
