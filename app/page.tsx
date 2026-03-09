@@ -3,11 +3,12 @@
 import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ShoppingBag, X, Menu, ArrowRight, Check, Plus, Minus, CreditCard, Banknote, MapPin, Truck, Package, Clock, ClipboardList, Wallet, Box, LogOut } from "lucide-react";
+import { ShoppingBag, X, Menu, ArrowRight, Check, Plus, Minus, CreditCard, Banknote, MapPin, Truck, Package, Clock, ClipboardList, Wallet, Box, LogOut, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { Footer } from "./components/shared/Footer";
+import { Receipt } from "./components/ui/Receipt";
 
 // --- Mock Data ---
 const MOCK_PRODUCTS = [
@@ -97,10 +98,9 @@ const MOCK_ORDERS = [
     status: "To Receive",
     date: "Oct 24, 2026",
     paymentMethod: "GCASH",
-    total: 120,
+    total: 1050,
     items: [
-      { name: "Heavyweight Box Tee", variant: "White / L", qty: 2, image: "/prod-tee.png" },
-      { name: "Everyday Hoodie", variant: "Black / M", qty: 1, image: "/prod-hoodie.png" }
+      { name: "Ramadan Kareem Calligraphy", variant: "Black / L", qty: 3, image: "/model-ramadan-black.png", price: 350 }
     ],
     tracking: [
       { status: "Arrived at Logistics Facility", time: "10:30 AM, Today", active: true },
@@ -113,9 +113,9 @@ const MOCK_ORDERS = [
     status: "Completed",
     date: "Sep 12, 2026",
     paymentMethod: "COD",
-    total: 85,
+    total: 1500,
     items: [
-      { name: "Everyday Hoodie", variant: "Grey / M", qty: 1, image: "/prod-hoodie.png" }
+      { name: "Family Roles Tee Set", variant: "Teal / M", qty: 1, image: "/model-family-set.jpg", price: 1500 }
     ],
     tracking: []
   },
@@ -124,9 +124,9 @@ const MOCK_ORDERS = [
     status: "To Ship",
     date: "Oct 25, 2026",
     paymentMethod: "MAYA",
-    total: 35,
+    total: 350,
     items: [
-      { name: "Heavyweight Box Tee", variant: "Black / XL", qty: 1, image: "/prod-tee.png" }
+      { name: "Ramadan Crescent Tee", variant: "Red / XL", qty: 1, image: "/model-ramadan-red.png", price: 350 }
     ],
     tracking: []
   }
@@ -202,6 +202,23 @@ export default function Home() {
   const [paymentAccount, setPaymentAccount] = useState("");
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentError, setPaymentError] = useState("");
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    name: "",
+    email: "",
+    address: "Block 49 Lot 14 Heroesville Phase 1 Brgy. Gaya-gaya",
+    phone: "09123456789"
+  });
+
+  useEffect(() => {
+    if (session?.user) {
+      setProfileForm(prev => ({
+        ...prev,
+        name: session.user?.name || "",
+        email: session.user?.email || ""
+      }));
+    }
+  }, [session]);
 
   const openChat = () => {
     if (!session) {
@@ -240,6 +257,8 @@ export default function Home() {
   }, [isChatOpen, session]);
   const [orders, setOrders] = useState<Order[]>(MOCK_ORDERS);
   const [toast, setToast] = useState<{ message: string; show: boolean }>({ message: "", show: false });
+  const [receiptOrder, setReceiptOrder] = useState<Order | null>(null);
+  const [trackingOrder, setTrackingOrder] = useState<Order | null>(null);
   const chatFileRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -392,6 +411,7 @@ export default function Home() {
           name: product?.name || "Product",
           variant: `${item.color} / ${item.size}`,
           qty: item.qty,
+          price: product?.price || 0,
           image: product?.image || "/prod-tee.png"
         };
       }),
@@ -513,6 +533,9 @@ export default function Home() {
           ) : (
             <div className="flex items-center gap-3 w-[100px]" /> /* Placeholder to maintain layout */
           )}
+          <button onClick={() => session ? setIsProfileOpen(true) : router.push("/login")} className="p-2 hover:text-neutral-500 transition-colors">
+            <User className="h-5 w-5" />
+          </button>
           <button onClick={() => { setCheckoutStep(0); setIsCartOpen(true); }} className="relative group p-2">
             <ShoppingBag className="h-5 w-5" />
             {cartItems.length > 0 && (
@@ -847,7 +870,15 @@ export default function Home() {
                           </div>
                         )}
 
-                        <div className="mt-4 flex gap-2 justify-end">
+                        <div className="mt-4 flex gap-2 flex-wrap justify-end">
+                          {order.status === 'Completed' && (
+                            <button
+                              onClick={() => setReceiptOrder(order)}
+                              className="px-4 py-2 border border-black text-black text-xs font-bold rounded hover:bg-neutral-50 flex items-center gap-1"
+                            >
+                              <ClipboardList className="h-3 w-3" /> View Receipt
+                            </button>
+                          )}
                           {order.status === 'To Pay' && (
                             <button
                               onClick={() => {
@@ -883,9 +914,22 @@ export default function Home() {
                           >
                             Contact Seller
                           </button>
-                          <button className="px-4 py-2 bg-black text-white text-xs font-bold rounded hover:bg-neutral-800">
-                            {order.status === 'Completed' ? 'Buy Again' : 'Track Order'}
-                          </button>
+                          {order.status === 'To Receive' && (
+                            <button 
+                              onClick={() => setTrackingOrder(order)}
+                              className="px-4 py-2 bg-black text-white text-xs font-bold rounded hover:bg-neutral-800"
+                            >
+                              Track Order
+                            </button>
+                          )}
+                          {order.status === 'Completed' && (
+                            <button 
+                              onClick={() => showToast("Linking to buy page...")}
+                              className="px-4 py-2 bg-black text-white text-xs font-bold rounded hover:bg-neutral-800"
+                            >
+                              Buy Again
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1492,6 +1536,102 @@ export default function Home() {
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {receiptOrder && (
+          <Receipt order={receiptOrder as any} onClose={() => setReceiptOrder(null)} />
+        )}
+      </AnimatePresence>
+
+      {/* TRACKING MODAL (Shopee Style) */}
+      <AnimatePresence>
+        {trackingOrder && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setTrackingOrder(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col z-10 h-[80vh]"
+            >
+              {/* Header */}
+              <div className="p-4 border-b border-neutral-100 flex items-center justify-between bg-white">
+                <div className="flex items-center gap-2">
+                  <Truck className="h-5 w-5 text-green-600" />
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-widest leading-none">Shipping Information</p>
+                    <p className="text-[10px] text-neutral-400 mt-1 font-bold">JT12938481723 (J&T Express)</p>
+                  </div>
+                </div>
+                <button onClick={() => setTrackingOrder(null)} className="p-2 hover:bg-neutral-100 rounded-full transition-colors">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Map Mockup */}
+              <div className="relative h-48 bg-neutral-200 overflow-hidden flex-shrink-0">
+                <div className="absolute inset-0 opacity-40">
+                  <div className="absolute top-10 left-20 w-px h-full bg-white/50 rotate-45" />
+                  <div className="absolute top-20 right-10 w-px h-full bg-white/50 -rotate-12" />
+                  <div className="absolute bottom-10 left-10 w-full h-px bg-white/50" />
+                </div>
+                {/* Glowing Dots (Live Tracking Mock) */}
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ repeat: Infinity, duration: 2 }}
+                  className="absolute top-[40%] left-[30%] h-4 w-4 bg-green-500 rounded-full border-2 border-white shadow-lg z-20"
+                />
+                <div className="absolute top-[60%] right-[40%] h-4 w-4 bg-black rounded-full border-2 border-white shadow-lg z-10" />
+                <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                  <path d="M 120 80 Q 200 120, 250 140" stroke="black" strokeWidth="2" strokeDasharray="5,5" fill="none" className="opacity-30" />
+                </svg>
+                <div className="absolute bottom-4 left-4 bg-white/80 backdrop-blur px-3 py-1.5 rounded-lg border border-black/5 shadow-sm">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500">Live Status</p>
+                  <p className="text-xs font-bold">2.4km from Delivery Center</p>
+                </div>
+              </div>
+
+              {/* Tracking Progress */}
+              <div className="flex-1 overflow-y-auto p-6 bg-neutral-50/50">
+                <div className="space-y-8 relative">
+                  <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-neutral-200" />
+                  {[
+                    { status: "Package is being delivered to you", time: "10:30 AM, Today", active: true, icon: Truck },
+                    { status: "Arrived at Logistics Facility", time: "08:15 AM, Today", active: false, icon: Package },
+                    { status: "Departed from Transit Center", time: "04:30 PM, Yesterday", active: false, icon: Clock },
+                    { status: "Seller has shipped your order", time: "10:00 AM, Yesterday", active: false, icon: Box },
+                    { status: "Order Placed", time: "09:12 AM, Yesterday", active: false, icon: ClipboardList },
+                  ].map((step, i) => (
+                    <div key={i} className="flex gap-6 relative group">
+                      <div className={`z-10 h-6 w-6 rounded-full flex items-center justify-center border-2 transition-colors ${step.active ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-200' : 'bg-white border-neutral-200 text-neutral-400'}`}>
+                        <step.icon className="h-3 w-3" />
+                      </div>
+                      <div className="flex-1 pb-2">
+                        <p className={`text-sm font-bold tracking-tight leading-tight ${step.active ? 'text-black' : 'text-neutral-400 font-medium'}`}>{step.status}</p>
+                        <p className="text-[10px] uppercase font-bold tracking-widest text-neutral-400 mt-1">{step.time}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Footer Info */}
+              <div className="p-4 bg-white border-t border-neutral-100 flex items-center justify-between">
+                <div className="flex -space-x-2">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="h-8 w-8 rounded-full border-2 border-white bg-neutral-100 overflow-hidden relative">
+                      <Image src={trackingOrder.items[0]?.image || `/prod-tee.png`} alt="item" fill className="object-cover" />
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">Total Purchase: ₱{trackingOrder.total}</p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* TOAST NOTIFICATION */}
       <AnimatePresence>
         {toast.show && (
@@ -1504,6 +1644,85 @@ export default function Home() {
             <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
             <span className="text-sm font-bold tracking-wide">{toast.message}</span>
           </motion.div>
+        )}
+      </AnimatePresence>
+      {/* PROFILE MODAL */}
+      <AnimatePresence>
+        {isProfileOpen && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setIsProfileOpen(false)}
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-8">
+                <div className="flex justify-between items-center mb-8">
+                  <h3 className="text-2xl font-bold uppercase tracking-tighter">My Profile</h3>
+                  <button onClick={() => setIsProfileOpen(false)} className="p-2 hover:bg-neutral-100 rounded-full transition-colors"><X className="h-5 w-5" /></button>
+                </div>
+
+                <div className="flex flex-col items-center mb-8">
+                  <div className="h-24 w-24 bg-neutral-900 text-white rounded-full flex items-center justify-center text-3xl font-bold mb-4 shadow-xl">
+                    {profileForm.name.split(' ').map(n => n[0]).join('') || "U"}
+                  </div>
+                  <p className="text-sm font-bold">{profileForm.name}</p>
+                  <p className="text-xs text-neutral-400 mt-1 uppercase tracking-widest font-bold">Member Since 2024</p>
+                </div>
+
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Full Name</label>
+                    <input
+                      type="text"
+                      className="w-full p-4 bg-neutral-50 border border-neutral-100 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-black outline-none transition-all"
+                      value={profileForm.name}
+                      onChange={e => setProfileForm({ ...profileForm, name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Email Address</label>
+                    <input
+                      type="email"
+                      disabled
+                      className="w-full p-4 bg-neutral-100 border border-transparent rounded-xl text-sm text-neutral-500 cursor-not-allowed"
+                      value={profileForm.email}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Default Shipping Address</label>
+                    <textarea
+                      rows={2}
+                      className="w-full p-4 bg-neutral-50 border border-neutral-100 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-black outline-none transition-all resize-none"
+                      value={profileForm.address}
+                      onChange={e => setProfileForm({ ...profileForm, address: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-8 flex gap-4">
+                  <button
+                    onClick={() => {
+                        showToast("Profile Updated!");
+                        setIsProfileOpen(false);
+                    }}
+                    className="flex-1 py-4 bg-black text-white text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-neutral-800 transition-all shadow-lg active:scale-95"
+                  >
+                    Save Changes
+                  </button>
+                  <button
+                    onClick={() => signOut()}
+                    className="px-6 py-4 bg-red-50 text-red-500 text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-red-100 transition-all"
+                  >
+                    Logout
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

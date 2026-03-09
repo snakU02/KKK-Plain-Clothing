@@ -29,11 +29,13 @@ import {
     Calendar,
     Mail,
     ShieldAlert,
-    Loader2
+    Loader2,
+    ClipboardList
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
+import { Receipt } from "../components/ui/Receipt";
 
 // --- Mock Admin Data ---
 const ADMIN_ORDERS = [
@@ -135,6 +137,9 @@ export default function AdminDashboard() {
 
     // Products State
     const [products, setProducts] = useState<AdminProduct[]>(INITIAL_PRODUCTS);
+    const [adminOrders, setAdminOrders] = useState(ADMIN_ORDERS);
+    const [receiptOrder, setReceiptOrder] = useState<any | null>(null);
+    const [isAdminMenuOpen, setIsAdminMenuOpen] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -304,6 +309,27 @@ export default function AdminDashboard() {
             console.error(err);
         }
     };
+
+    const handleAcceptOrder = (orderId: string) => {
+        const trackingNum = "JT" + Math.floor(Math.random() * 9000000000 + 1000000000);
+        setAdminOrders(prev => prev.map(order => {
+            if (order.id === orderId) {
+                const updated = { ...order, status: "PROCESSING", trackingNumber: trackingNum, courier: "J&T Express" };
+                setReceiptOrder(updated); // Auto-generate/show waybill on accept
+                return updated;
+            }
+            return order;
+        }));
+        setIsAdminMenuOpen(null);
+    };
+
+    const handleUpdateOrderStatus = (orderId: string, newStatus: string) => {
+        setAdminOrders(prev => prev.map(order => 
+            order.id === orderId ? { ...order, status: newStatus } : order
+        ));
+        setIsAdminMenuOpen(null);
+    };
+
 
     // --- Product Handlers ---
     const handleAddProduct = () => {
@@ -693,8 +719,6 @@ export default function AdminDashboard() {
                                 <div className="flex items-center justify-between">
                                     <h2 className="text-2xl font-bold tracking-tight">Order Management</h2>
                                     <div className="flex gap-2">
-                                        <button className="px-4 py-2 bg-white border border-neutral-200 rounded-lg text-xs font-bold uppercase tracking-widest hover:border-black transition-all">Export</button>
-                                        <button className="px-4 py-2 bg-black text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-neutral-800 transition-all">Add Order</button>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -745,7 +769,7 @@ export default function AdminDashboard() {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-neutral-100">
-                                            {ADMIN_ORDERS.map((order) => (
+                                            {adminOrders.map((order) => (
                                                 <tr key={order.id} className="hover:bg-neutral-50 transition-colors group">
                                                     <td className="px-8 py-4 text-sm font-bold text-black">{order.id}</td>
                                                     <td className="px-8 py-4">
@@ -772,14 +796,65 @@ export default function AdminDashboard() {
                                                         <div className="flex items-center justify-center gap-2">
                                                             {order.status === "PENDING" && (
                                                                 <>
-                                                                    <button className="p-2 text-green-500 hover:bg-green-50 rounded-lg transition-colors" title="Accept"><CheckCircle2 className="h-4 w-4" /></button>
+                                                                    <button 
+                                                                        onClick={() => handleAcceptOrder(order.id)}
+                                                                        className="p-2 text-green-500 hover:bg-green-50 rounded-lg transition-colors" 
+                                                                        title="Accept"
+                                                                    >
+                                                                        <CheckCircle2 className="h-4 w-4" />
+                                                                    </button>
                                                                     <button className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Reject"><XCircle className="h-4 w-4" /></button>
                                                                 </>
                                                             )}
                                                             {order.status === "PROCESSING" && (
                                                                 <button className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Ship"><Truck className="h-4 w-4" /></button>
                                                             )}
-                                                            <button className="p-2 text-neutral-400 hover:bg-neutral-100 rounded-lg transition-colors"><MoreVertical className="h-4 w-4" /></button>
+                                                            <button
+                                                                onClick={() => setReceiptOrder(order)}
+                                                                className="p-2 text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors"
+                                                                title="View Receipt"
+                                                            >
+                                                                <ClipboardList className="h-4 w-4" />
+                                                            </button>
+                                                            <div className="relative">
+                                                                <button 
+                                                                    onClick={() => setIsAdminMenuOpen(isAdminMenuOpen === order.id ? null : order.id)}
+                                                                    className={`p-2 rounded-lg transition-colors ${isAdminMenuOpen === order.id ? 'bg-neutral-100 text-black' : 'text-neutral-400 hover:bg-neutral-100'}`}
+                                                                >
+                                                                    <MoreVertical className="h-4 w-4" />
+                                                                </button>
+                                                                <AnimatePresence>
+                                                                    {isAdminMenuOpen === order.id && (
+                                                                        <motion.div
+                                                                            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                                            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                                            className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-neutral-100 overflow-hidden z-[100] text-left"
+                                                                        >
+                                                                            <div className="p-2 space-y-1">
+                                                                                {order.status === "PENDING" && (
+                                                                                    <button onClick={() => handleAcceptOrder(order.id)} className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-green-600 hover:bg-green-50 rounded-lg transition-colors">
+                                                                                        <CheckCircle2 className="h-3 w-3" /> Accept Order
+                                                                                    </button>
+                                                                                )}
+                                                                                {order.status === "PROCESSING" && (
+                                                                                    <button onClick={() => handleUpdateOrderStatus(order.id, "SHIPPED")} className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                                                                        <Truck className="h-3 w-3" /> Ship Order
+                                                                                    </button>
+                                                                                )}
+                                                                                {order.status !== "CANCELLED" && (
+                                                                                    <button onClick={() => handleUpdateOrderStatus(order.id, "CANCELLED")} className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                                                                        <XCircle className="h-3 w-3" /> Cancel Order
+                                                                                    </button>
+                                                                                )}
+                                                                                <button onClick={() => { setReceiptOrder(order); setIsAdminMenuOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-neutral-600 hover:bg-neutral-50 rounded-lg transition-colors">
+                                                                                    <ClipboardList className="h-3 w-3" /> Print Waybill
+                                                                                </button>
+                                                                            </div>
+                                                                        </motion.div>
+                                                                    )}
+                                                                </AnimatePresence>
+                                                            </div>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -1305,6 +1380,12 @@ export default function AdminDashboard() {
                             </div>
                         </motion.div>
                     </div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {receiptOrder && (
+                    <Receipt order={receiptOrder} onClose={() => setReceiptOrder(null)} />
                 )}
             </AnimatePresence>
         </div>
