@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ShoppingBag, X, Menu, ArrowRight, Check, Plus, Minus, CreditCard, Banknote, MapPin, Truck, Package, Clock, ClipboardList, Wallet, Box, LogOut, User } from "lucide-react";
+import { ShoppingBag, X, Menu, ArrowRight, Check, Plus, Minus, CreditCard, Banknote, MapPin, Truck, Package, Clock, ClipboardList, Wallet, Box, LogOut, User, Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
@@ -209,6 +209,7 @@ export default function Home() {
     address: "Block 49 Lot 14 Heroesville Phase 1 Brgy. Gaya-gaya",
     phone: "09123456789"
   });
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if (session?.user) {
@@ -405,6 +406,7 @@ export default function Home() {
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       paymentMethod: selectedPayment,
       total: cartTotal,
+      customerEmail: checkoutInfo.email,
       items: selectedItems.map(item => {
         const product = products.find(p => p.id === item.id);
         return {
@@ -429,6 +431,17 @@ export default function Home() {
     setIsCartOpen(false);
     setCheckoutStep(0);
     setActiveTab(orderStatus);
+
+    // Call the order API to send notification (will be implemented next)
+    try {
+      await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newOrder)
+      });
+    } catch (err) {
+      console.error("Order notification failed:", err);
+    }
 
     if (selectedPayment !== "COD") {
       setPaymentOrder(newOrder);
@@ -573,13 +586,22 @@ export default function Home() {
 
       {/* Product Grid */}
       <section ref={shopRef} id="shop" className="px-6 py-24 md:px-12 max-w-[1600px] mx-auto scroll-mt-20">
-        <div className="flex justify-between items-end mb-12">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-6">
           <h2 className="text-3xl font-bold tracking-tight">New Arrivals.</h2>
-          <button onClick={() => scrollToSection(shopRef)} className="text-xs font-semibold uppercase border-b border-black pb-1 hover:border-transparent transition-colors">View All</button>
+          <div className="relative w-full md:w-80 group">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 group-focus-within:text-black transition-colors" />
+            <input 
+              type="text" 
+              placeholder="Search products..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all"
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-12">
-          {products.map((product) => (
+          {products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase())).map((product) => (
             <div key={product.id} className="group cursor-pointer" onClick={() => openAddToCartModal(product)}>
               <div className="relative aspect-[3/4] overflow-hidden bg-neutral-100 mb-4">
                 <span className="absolute top-3 left-3 bg-white/90 backdrop-blur px-2 py-1 text-[10px] uppercase font-bold tracking-wider z-10">
