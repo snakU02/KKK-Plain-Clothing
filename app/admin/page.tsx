@@ -35,6 +35,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
+import Link from "next/link";
 import { Receipt } from "../components/ui/Receipt";
 
 // --- Mock Admin Data ---
@@ -132,7 +133,8 @@ export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState("dashboard"); // Default to dashboard as requested
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
-    const [pendingAdmins, setPendingAdmins] = useState<any[]>([]); // Using any for admin auth records
+    const [pendingAdmins, setPendingAdmins] = useState<any[]>([]); 
+    const [allUsers, setAllUsers] = useState<any[]>([]);
     const [loadingAdmins, setLoadingAdmins] = useState(false);
 
     // Products State
@@ -273,14 +275,9 @@ export default function AdminDashboard() {
         { id: "messages", label: "Messages", icon: MessageSquare },
         { id: "products", label: "Products", icon: Package },
         { id: "customers", label: "Customers", icon: Users },
+        { id: "settings", label: "Settings", icon: Settings },
         ...(isSuperAdmin ? [{ id: "authorization", label: "Authorization", icon: ShieldAlert }] : []),
     ];
-
-    useEffect(() => {
-        if (isSuperAdmin && activeTab === "authorization") {
-            fetchPendingAdmins();
-        }
-    }, [isSuperAdmin, activeTab]);
 
     const fetchPendingAdmins = async () => {
         setLoadingAdmins(true);
@@ -295,6 +292,46 @@ export default function AdminDashboard() {
         }
     };
 
+    const fetchAllUsers = async () => {
+        setLoadingAdmins(true);
+        try {
+            const res = await fetch("/api/admin/users");
+            const data = await res.json();
+            if (data.users) {
+                setAllUsers(data.users);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoadingAdmins(false);
+        }
+    };
+
+    const handleUpdateUser = async (userId: string, role?: string, isAuthorized?: boolean) => {
+        try {
+            const res = await fetch("/api/admin/users", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId, role, isAuthorized }),
+            });
+            if (res.ok) {
+                fetchAllUsers();
+                fetchPendingAdmins();
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    useEffect(() => {
+        if (isSuperAdmin) {
+            if (activeTab === "authorization" || activeTab === "customers") {
+                fetchPendingAdmins();
+                fetchAllUsers();
+            }
+        }
+    }, [isSuperAdmin, activeTab]);
+
     const handleAuthorize = async (userId: string, action: "authorize" | "reject") => {
         try {
             const res = await fetch("/api/admin/authorize", {
@@ -303,7 +340,8 @@ export default function AdminDashboard() {
                 body: JSON.stringify({ userId, action }),
             });
             if (res.ok) {
-                setPendingAdmins(prev => prev.filter(a => a.id !== userId));
+                fetchAllUsers();
+                fetchPendingAdmins();
             }
         } catch (err) {
             console.error(err);
@@ -1100,7 +1138,7 @@ export default function AdminDashboard() {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-neutral-100">
-                                            {MOCK_CUSTOMERS.map((customer) => (
+                                            {(allUsers.length > 0 ? allUsers : MOCK_CUSTOMERS).map((customer: any) => (
                                                 <tr key={customer.id} className="hover:bg-neutral-50 transition-colors">
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center gap-3">
@@ -1111,14 +1149,14 @@ export default function AdminDashboard() {
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 text-sm text-neutral-500">{customer.email}</td>
-                                                    <td className="px-6 py-4 text-sm font-bold">{customer.totalOrders}</td>
-                                                    <td className="px-6 py-4 text-sm font-bold">₱{customer.totalSpent.toLocaleString("en-US")}</td>
+                                                    <td className="px-6 py-4 text-sm font-bold">{customer.totalOrders || 0}</td>
+                                                    <td className="px-6 py-4 text-sm font-bold">₱{(customer.totalSpent || 0).toLocaleString("en-US")}</td>
                                                     <td className="px-6 py-4">
-                                                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${customer.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-neutral-100 text-neutral-500'}`}>
-                                                            {customer.status}
+                                                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${customer.role === 'ADMIN' ? 'bg-blue-100 text-blue-700' : customer.role === 'SUPER_ADMIN' ? 'bg-purple-100 text-purple-700' : 'bg-neutral-100 text-neutral-500'}`}>
+                                                            {customer.role || 'CUSTOMER'}
                                                         </span>
                                                     </td>
-                                                    <td className="px-6 py-4 text-sm text-neutral-400">{customer.lastOrder}</td>
+                                                    <td className="px-6 py-4 text-sm text-neutral-400">{customer.created_at ? new Date(customer.created_at).toLocaleDateString() : customer.lastOrder}</td>
                                                     <td className="px-6 py-4 text-center">
                                                         <button className="text-neutral-400 hover:text-black">
                                                             <MoreVertical className="h-4 w-4" />
@@ -1141,10 +1179,12 @@ export default function AdminDashboard() {
                                 className="space-y-8"
                             >
                                 <div className="flex items-center justify-between">
-                                    <h2 className="text-2xl font-bold tracking-tight">Admin Authorization</h2>
-                                    <button onClick={fetchPendingAdmins} className="p-2 hover:bg-neutral-200 rounded-full transition-all">
-                                        <TrendingUp className="h-5 w-5 rotate-90" />
-                                    </button>
+                                    <h2 className="text-2xl font-bold tracking-tight">System Authorization</h2>
+                                    <div className="flex gap-2">
+                                        <button onClick={fetchPendingAdmins} className="p-2 hover:bg-neutral-200 rounded-full transition-all flex items-center gap-2 text-xs font-bold uppercase">
+                                            <TrendingUp className="h-4 w-4 rotate-90" /> Refresh
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 overflow-hidden">
@@ -1199,9 +1239,102 @@ export default function AdminDashboard() {
                                         </table>
                                     )}
                                 </div>
+
+                                {/* Active Administrators Section */}
+                                <div className="space-y-4">
+                                    <h3 className="text-sm font-bold uppercase tracking-widest text-neutral-400">Active Administrators</h3>
+                                    <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 overflow-hidden">
+                                        {allUsers.filter(u => u.role === 'ADMIN' && u.is_authorized !== false).length === 0 ? (
+                                            <div className="p-12 text-center text-neutral-400 text-sm">No other active admins.</div>
+                                        ) : (
+                                            <table className="w-full text-left">
+                                                <thead>
+                                                    <tr className="bg-neutral-50 text-neutral-400 text-[10px] font-bold uppercase tracking-widest border-b border-neutral-200">
+                                                        <th className="px-8 py-4">Admin Name</th>
+                                                        <th className="px-8 py-4">Email</th>
+                                                        <th className="px-8 py-4 text-center">Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-neutral-100">
+                                                    {allUsers.filter(u => u.role === 'ADMIN' && u.is_authorized !== false).map((admin) => (
+                                                        <tr key={admin.id} className="hover:bg-neutral-50 transition-colors">
+                                                            <td className="px-8 py-4 text-sm font-bold text-black">{admin.name}</td>
+                                                            <td className="px-8 py-4 text-sm text-neutral-500">{admin.email}</td>
+                                                            <td className="px-8 py-4 text-center">
+                                                                <button 
+                                                                    onClick={() => handleUpdateUser(admin.id, undefined, false)}
+                                                                    className="text-xs font-bold text-red-500 hover:underline uppercase tracking-widest"
+                                                                >
+                                                                    Revoke Access
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        )}
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* --- SETTINGS TAB --- */}
+                        {activeTab === "settings" && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="max-w-2xl mx-auto space-y-8"
+                            >
+                                <div className="text-center mb-10">
+                                    <h2 className="text-3xl font-bold tracking-tight uppercase">Account Settings</h2>
+                                    <p className="text-neutral-500">Manage your administrative profile</p>
+                                </div>
+
+                                <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 divide-y divide-neutral-100">
+                                    {/* Profile Info */}
+                                    <div className="p-8 space-y-6">
+                                        <div className="flex items-center gap-6">
+                                            <div className="h-20 w-20 bg-black rounded-full flex items-center justify-center text-white text-2xl font-bold tracking-tighter uppercase">
+                                                {mounted && session?.user?.name ? session.user.name.split(' ').map(n => n[0]).join('') : "A"}
+                                            </div>
+                                            <div>
+                                                <h3 className="text-xl font-bold">{session?.user?.name}</h3>
+                                                <p className="text-neutral-500 text-sm">{session?.user?.email}</p>
+                                                <span className="inline-block mt-2 px-3 py-1 bg-neutral-100 rounded-full text-[10px] font-bold uppercase tracking-widest text-neutral-600">
+                                                    {isSuperAdmin ? "Super Administrator" : "Store Administrator"}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Security Section */}
+                                    <div className="p-8">
+                                        <h3 className="text-sm font-bold uppercase tracking-widest text-neutral-400 mb-6">Security & Password</h3>
+                                        <p className="text-sm text-neutral-600 mb-6">
+                                            To change your password, please use the secure password recovery system. This ensures encrypted 
+                                            verification through your registered Gmail account.
+                                        </p>
+                                        <Link 
+                                            href="/forgot-password"
+                                            className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl text-sm font-bold uppercase tracking-widest hover:bg-neutral-800 transition-all shadow-lg shadow-black/10"
+                                        >
+                                            <ShieldAlert className="h-4 w-4" /> Reset via Secure Link
+                                        </Link>
+                                    </div>
+
+                                    {/* App Info */}
+                                    <div className="p-8 bg-neutral-50/50">
+                                        <div className="flex justify-between items-center text-xs text-neutral-400 font-bold uppercase tracking-widest">
+                                            <span>Version 2.0.4 - Premium</span>
+                                            <span>© 2026 KK Plain Store</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </motion.div>
                         )}
                     </AnimatePresence>
+
                 </div>
             </main>
 
