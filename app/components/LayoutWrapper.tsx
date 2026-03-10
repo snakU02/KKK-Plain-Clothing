@@ -8,7 +8,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
     const pathname = usePathname();
 
     // Pages that handle their own header/footer or don't need the default ones
-    const isSpecialPage = pathname === "/" || pathname === "/admin" || pathname === "/login" || pathname === "/signup";
+    const isSpecialPage = pathname === "/" || pathname === "/admin" || pathname === "/login" || pathname === "/signup" || pathname === "/forgot-password";
 
     return (
         <>

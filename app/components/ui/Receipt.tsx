@@ -1,7 +1,10 @@
 "use client";
 
-import { X, Printer, Truck, MapPin, User, Calendar, Hash, Building2 } from "lucide-react";
+import { X, Printer, Truck, MapPin, User, Calendar, Hash, Building2, Download, Image as ImageIcon } from "lucide-react";
 import { motion } from "framer-motion";
+import { useRef } from "react";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 interface ReceiptProps {
   order: {
@@ -24,6 +27,7 @@ export function Receipt({ order, onClose }: ReceiptProps) {
   const shopAddress = "Block 49 Lot 14 Heroesville Phase 1 Brgy. Gaya-gaya";
   const courier = order.courier || "J&T Express";
   const trackingNumber = order.trackingNumber || "7701" + Math.floor(Math.random() * 90000000 + 10000000);
+  const receiptRef = useRef<HTMLDivElement>(null);
   
   const items = Array.isArray(order.items) 
     ? order.items 
@@ -31,6 +35,57 @@ export function Receipt({ order, onClose }: ReceiptProps) {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadImage = async () => {
+    if (receiptRef.current) {
+      try {
+        const canvas = await html2canvas(receiptRef.current, {
+          scale: 3, // Higher scale for better quality
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: "#ffffff",
+          windowWidth: 420, // Lock width to avoid layout shifts
+          onclone: (document) => {
+             // Ensure the cloned element is visible even if the original is scrolling
+             const el = document.querySelector('[ref]') as HTMLElement;
+             if (el) el.style.maxHeight = 'none';
+          }
+        });
+        const link = document.createElement("a");
+        link.download = `KK-Receipt-${order.id}.png`;
+        link.href = canvas.toDataURL("image/png", 1.0);
+        link.click();
+      } catch (err) {
+        console.error("Download failed:", err);
+        alert("Failed to generate image. Please try Printing instead.");
+      }
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (receiptRef.current) {
+      try {
+        const canvas = await html2canvas(receiptRef.current, {
+          scale: 3,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: "#ffffff",
+          windowWidth: 420,
+        });
+        const imgData = canvas.toDataURL("image/png", 1.0);
+        const pdf = new jsPDF({
+          orientation: "portrait",
+          unit: "px",
+          format: [canvas.width / 3, canvas.height / 3]
+        });
+        pdf.addImage(imgData, "PNG", 0, 0, canvas.width / 3, canvas.height / 3);
+        pdf.save(`KK-Receipt-${order.id}.pdf`);
+      } catch (err) {
+        console.error("PDF generation failed:", err);
+        alert("Failed to generate PDF. Please try Printing instead.");
+      }
+    }
   };
 
   return (
@@ -56,6 +111,12 @@ export function Receipt({ order, onClose }: ReceiptProps) {
             <span className="text-[11px] font-bold text-black uppercase">Logistic Waybill</span>
           </div>
           <div className="flex gap-2">
+            <button onClick={handleDownloadImage} className="p-2 hover:bg-neutral-50 border border-neutral-100 rounded-full transition-all" title="Download Image">
+              <ImageIcon className="h-3.5 w-3.5 text-black" />
+            </button>
+            <button onClick={handleDownloadPDF} className="p-2 hover:bg-neutral-50 border border-neutral-100 rounded-full transition-all" title="Download PDF">
+              <Download className="h-3.5 w-3.5 text-black" />
+            </button>
             <button onClick={handlePrint} className="p-2 hover:bg-neutral-50 border border-neutral-100 rounded-full transition-all" title="Print">
               <Printer className="h-3.5 w-3.5 text-black" />
             </button>
@@ -66,7 +127,7 @@ export function Receipt({ order, onClose }: ReceiptProps) {
         </div>
 
         {/* LOGISTIC CONTENT */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 text-black font-sans leading-relaxed print:p-10 bg-white">
+        <div ref={receiptRef} className="flex-1 overflow-y-auto p-6 space-y-6 text-black font-sans leading-relaxed print:p-10 bg-white">
           
           {/* Top Brand & QR Code Section */}
           <div className="flex justify-between items-start gap-4 pb-6 border-b border-black/5">

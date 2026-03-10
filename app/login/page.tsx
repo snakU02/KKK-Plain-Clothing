@@ -10,25 +10,38 @@ import { ArrowLeft, Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
 export default function LoginPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [code, setCode] = useState("");
+    const [is2FARequired, setIs2FARequired] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const router = useRouter();
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError("");
 
-        try {
-            const res = await signIn("credentials", {
-                redirect: false,
-                email,
-                password,
-            });
+        const signInOptions: any = {
+            redirect: false,
+            email,
+            password
+        };
+        if (is2FARequired) {
+            signInOptions.code = code;
+        }
 
-            if (res?.error) {
-                setError("Invalid email or password");
+        try {
+            const res = await signIn("credentials", signInOptions);
+
+            const resError = res?.error?.trim() || "";
+
+            if (resError) {
+                if (resError.includes("2FA_REQUIRED") || resError === "2FA_REQUIRED") {
+                    setIs2FARequired(true);
+                    setError(""); 
+                } else {
+                    setError(resError || "Invalid email or password");
+                }
             } else {
                 router.push("/");
                 router.refresh();
@@ -42,12 +55,24 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
-            <Link
-                href="/"
-                className="absolute top-8 left-8 flex items-center gap-2 text-sm font-medium text-neutral-500 hover:text-black transition-colors"
-            >
-                <ArrowLeft className="h-4 w-4" /> Back to Store
-            </Link>
+            {is2FARequired ? (
+                <button
+                    onClick={() => {
+                        setIs2FARequired(false);
+                        setCode("");
+                    }}
+                    className="absolute top-8 left-8 flex items-center gap-2 text-sm font-medium text-neutral-500 hover:text-black transition-colors"
+                >
+                    <ArrowLeft className="h-4 w-4" /> Back to Sign In
+                </button>
+            ) : (
+                <Link
+                    href="/"
+                    className="absolute top-8 left-8 flex items-center gap-2 text-sm font-medium text-neutral-500 hover:text-black transition-colors"
+                >
+                    <ArrowLeft className="h-4 w-4" /> Back to Store
+                </Link>
+            )}
 
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -55,8 +80,12 @@ export default function LoginPage() {
                 className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 md:p-12"
             >
                 <div className="text-center mb-10">
-                    <h1 className="text-3xl font-bold tracking-tighter uppercase mb-2">Welcome Back.</h1>
-                    <p className="text-neutral-500">Sign in to your account</p>
+                    <h1 className="text-3xl font-bold tracking-tighter uppercase mb-2">
+                        {is2FARequired ? "Security Code." : "Welcome Back."}
+                    </h1>
+                    <p className="text-neutral-500">
+                        {is2FARequired ? "Enter the verification code sent to your Gmail" : "Sign in to your account"}
+                    </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -84,7 +113,7 @@ export default function LoginPage() {
                     <div className="space-y-2">
                         <div className="flex justify-between">
                             <label className="text-xs font-bold uppercase tracking-widest text-neutral-400">Password</label>
-                            <Link href="#" className="text-xs font-bold text-neutral-400 hover:text-black transition-colors">Forgot?</Link>
+                            <Link href="/forgot-password" name="forgot-password" id="forgot-password" className="text-xs font-bold text-neutral-400 hover:text-black transition-colors">Forgot?</Link>
                         </div>
                         <div className="relative">
                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-300" />
@@ -109,6 +138,29 @@ export default function LoginPage() {
                             </button>
                         </div>
                     </div>
+
+                    {is2FARequired && (
+                        <motion.div 
+                            initial={{ opacity: 0, height: 0 }} 
+                            animate={{ opacity: 1, height: "auto" }}
+                            className="space-y-2 pt-2"
+                        >
+                            <label className="text-xs font-bold uppercase tracking-widest text-blue-500">Security Code</label>
+                            <div className="relative">
+                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-blue-300" />
+                                <input
+                                    type="text"
+                                    required
+                                    value={code}
+                                    onChange={(e) => setCode(e.target.value)}
+                                    maxLength={6}
+                                    className="w-full pl-10 pr-4 py-3 bg-blue-50/50 border border-blue-100 rounded-lg focus:ring-2 focus:ring-black focus:bg-white outline-none transition-all placeholder:text-blue-300"
+                                    placeholder="Enter 6-digit code"
+                                />
+                            </div>
+                            <p className="text-[10px] text-neutral-400 italic">Verification code sent to your Gmail.</p>
+                        </motion.div>
+                    )}
 
                     <button
                         type="submit"

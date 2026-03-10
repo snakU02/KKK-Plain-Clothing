@@ -9,23 +9,10 @@ export const authOptions: NextAuthOptions = {
             name: "Credentials",
             credentials: {
                 email: { label: "Email", type: "text" },
-                password: { label: "Password", type: "password" }
+                password: { label: "Password", type: "password" },
+                code: { label: "2FA Code", type: "text" }
             },
             async authorize(credentials) {
-                // HARDCODED SUPER ADMIN LOGIN
-                if (credentials?.email === "admin" && credentials?.password === "admin") {
-                    console.log("Login: Hardcoded Super Admin detected");
-                    return {
-                        id: "super-admin-id",
-                        email: "admin@kkplain.com",
-                        name: "Super Admin",
-                        role: "SUPER_ADMIN",
-                        address: "",
-                        first_name: "Super",
-                        last_name: "Admin"
-                    };
-                }
-
                 if (!credentials?.email || !credentials?.password) {
                     throw new Error("Invalid credentials");
                 }
@@ -50,6 +37,64 @@ export const authOptions: NextAuthOptions = {
 
                 if (!isValid) {
                     throw new Error("Invalid password");
+                }
+
+                // --- 2FA LOGIC ---
+                const rawCode = credentials?.code;
+                const hasProvidedCode = rawCode && rawCode !== "" && rawCode !== "undefined";
+
+                // Only attempt verification if the user provided a code AND we have one in the database
+                if (hasProvidedCode && user.two_fa_code) {
+                    const providedCode = rawCode.trim();
+                    if (user.two_fa_code !== providedCode) {
+                        throw new Error("Incorrect verification code.");
+                    }
+                    
+                    // Force UTC parsing for the expiration check
+                    const expiresStr = user.two_fa_expires;
+                    const expiresDate = expiresStr.endsWith('Z') ? new Date(expiresStr) : new Date(expiresStr + 'Z');
+                    
+                    if (expiresDate.getTime() < Date.now()) {
+                        throw new Error("Verification code has expired.");
+                    }
+                    
+                    // Clear code after successful verification
+                    await supabaseAdmin
+                        .from('users')
+                        .update({ two_fa_code: null, two_fa_expires: null })
+                        .eq('id', user.id);
+                } else {
+                    // Send 2FA code if not provided
+                    const code = Math.floor(100000 + Math.random() * 900000).toString();
+                    const expires = new Date(Date.now() + 1800000).toISOString(); // 30 minutes
+
+                    await supabaseAdmin
+                        .from('users')
+                        .update({ two_fa_code: code, two_fa_expires: expires })
+                        .eq('id', user.id);
+
+                    // Send email with code
+                    const transporter = (await import("nodemailer")).default.createTransport({
+                        service: 'gmail',
+                        auth: {
+                            user: process.env.GMAIL_USER,
+                            pass: process.env.GMAIL_PASS,
+                        },
+                    });
+
+                    await transporter.sendMail({
+                        from: `"KK Plain Store" <${process.env.GMAIL_USER}>`,
+                        to: user.email,
+                        subject: "Security Code - KK Plain Clothing",
+                        html: `<div style="text-align:center; font-family:sans-serif; padding:40px;">
+                            <h2 style="letter-spacing:4px;">SECURITY CODE</h2>
+                            <p>Enter the code below to complete your sign in.</p>
+                            <h1 style="font-size:48px; letter-spacing:8px; margin:20px 0;">${code}</h1>
+                            <p style="color:#666;">This code will expire in 10 minutes.</p>
+                        </div>`
+                    });
+
+                    throw new Error("2FA_REQUIRED");
                 }
 
                 // CHECK AUTHORIZATION FOR ADMIN ACCOUNTS
